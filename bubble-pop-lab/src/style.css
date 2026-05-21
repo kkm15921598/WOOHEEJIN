@@ -57,6 +57,12 @@ body {
   z-index: 10;
 }
 
+.hud__left {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
 .hud__brand {
   font-weight: 800;
   font-size: 18px;
@@ -66,6 +72,32 @@ body {
   padding: 8px 14px;
   border-radius: 999px;
   box-shadow: var(--shadow-glass);
+}
+
+.hud__stage {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  background: var(--glass);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  padding: 8px 12px;
+  border-radius: 999px;
+  box-shadow: var(--shadow-glass);
+}
+
+.hud__stage-label {
+  font-size: 10px;
+  letter-spacing: 1.5px;
+  color: var(--text-muted);
+  font-weight: 700;
+}
+
+.hud__stage-value {
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--emphasis);
+  font-variant-numeric: tabular-nums;
 }
 
 .hud__score {
@@ -148,4 +180,102 @@ body {
 .hero__cta:active {
   transform: scale(0.96);
   box-shadow: 0 8px 20px rgba(90, 111, 255, 0.3);
+}
+
+/* ---------- 콤보 카운터 ---------- */
+.combo {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.6);
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+  font-family: var(--font-kr);
+  pointer-events: none;
+  z-index: 25;
+  opacity: 0;
+  transition: opacity 200ms var(--ease-soft), transform 200ms var(--ease-soft);
+  text-shadow: 0 4px 24px rgba(90, 111, 255, 0.6), 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+.combo[data-show="true"] {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+.combo[data-pulse="true"] {
+  animation: comboPulse 220ms var(--ease-soft);
+}
+@keyframes comboPulse {
+  0% { transform: translate(-50%, -50%) scale(0.9); }
+  50% { transform: translate(-50%, -50%) scale(1.18); }
+  100% { transform: translate(-50%, -50%) scale(1); }
+}
+.combo__x {
+  font-size: 32px;
+  font-weight: 800;
+  color: var(--accent-2);
+}
+.combo__value {
+  font-size: 72px;
+  font-weight: 900;
+  letter-spacing: -3px;
+  background: linear-gradient(135deg, var(--emphasis), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  font-variant-numeric: tabular-nums;
+}
+.combo__label {
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: var(--emphasis);
+  margin-left: 8px;
+}
+
+/* ---------- 스테이지 클리어 토스트 ---------- */
+.stage-toast {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 22;
+  opacity: 0;
+  transform: scale(0.85);
+  transition: opacity 320ms var(--ease-soft), transform 480ms var(--ease-soft);
+}
+.stage-toast[data-show="true"] {
+  opacity: 1;
+  transform: scale(1);
+}
+.stage-toast__small {
+  font-size: 14px;
+  letter-spacing: 6px;
+  font-weight: 800;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+}
+.stage-toast__num {
+  font-size: 140px;
+  font-weight: 900;
+  letter-spacing: -8px;
+  line-height: 1;
+  background: linear-gradient(135deg, var(--accent-1), var(--emphasis), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 8px 32px rgba(90, 111, 255, 0.4));
+  margin-bottom: 8px;
+}
+.stage-toast__big {
+  font-size: 36px;
+  font-weight: 900;
+  letter-spacing: 8px;
+  background: linear-gradient(135deg, var(--emphasis), var(--accent-2));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }

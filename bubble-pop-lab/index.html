@@ -11,12 +11,28 @@
     <main id="app">
       <canvas id="scene"></canvas>
       <header class="hud">
-        <div class="hud__brand">버블팝랩</div>
+        <div class="hud__left">
+          <div class="hud__brand">버블팝랩</div>
+          <div class="hud__stage">
+            <span class="hud__stage-label">STAGE</span>
+            <span id="stage" class="hud__stage-value">1</span>
+          </div>
+        </div>
         <div class="hud__score">
           <span class="hud__score-label">POP</span>
           <span id="score" class="hud__score-value">0</span>
         </div>
       </header>
+      <div id="combo" class="combo" data-show="false">
+        <span class="combo__x">×</span>
+        <span id="comboValue" class="combo__value">2</span>
+        <span class="combo__label">COMBO</span>
+      </div>
+      <div id="stageToast" class="stage-toast" data-show="false">
+        <span class="stage-toast__small">STAGE</span>
+        <span id="stageToastNum" class="stage-toast__num">1</span>
+        <span class="stage-toast__big">CLEAR!</span>
+      </div>
       <section class="hero" id="hero">
         <h1 class="hero__title">무한 뽁뽁이</h1>
         <p class="hero__subtitle">머리 비우고, 손가락만 움직이세요</p>

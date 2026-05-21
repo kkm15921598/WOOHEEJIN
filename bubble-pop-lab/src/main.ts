@@ -4,8 +4,13 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 // ---------- 1. 씬 셋업 ----------
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const scoreEl = document.getElementById("score")!;
+const stageEl = document.getElementById("stage")!;
 const startBtn = document.getElementById("startBtn")!;
 const hero = document.getElementById("hero")!;
+const comboEl = document.getElementById("combo")!;
+const comboValueEl = document.getElementById("comboValue")!;
+const stageToastEl = document.getElementById("stageToast")!;
+const stageToastNumEl = document.getElementById("stageToastNum")!;
 
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -34,6 +39,14 @@ const auraLight = new THREE.PointLight(0xc6a8ff, 1.4, 30);
 auraLight.position.set(0, 0, 6);
 scene.add(auraLight);
 
+// ---------- 게임 상태 ----------
+let stage = 1;
+let score = 0;
+let comboCount = 0;
+let lastPopTime = 0;
+const COMBO_WINDOW = 600; // ms
+let comboHideTimer: number | null = null;
+
 // ---------- 2. 버블 그리드 ----------
 type Bubble = {
   mesh: THREE.Mesh;
@@ -42,6 +55,7 @@ type Bubble = {
   color: number;
   emissive: number;
   floatPhase: number;
+  rare: boolean;
 };
 
 const bubbles: Bubble[] = [];
@@ -67,18 +81,23 @@ const MYSTIC_PALETTE = [
   { color: 0xFBBF24, emissive: 0x92400E, name: "topaz" },          // 황옥
 ];
 
-function makeBubbleMaterial(): { mat: THREE.MeshPhysicalMaterial; palette: typeof MYSTIC_PALETTE[number] } {
-  const palette = MYSTIC_PALETTE[Math.floor(Math.random() * MYSTIC_PALETTE.length)];
+// 황금 레어 버블 — 특별한 폭발 + 점수 5배
+const RARE_PALETTE = { color: 0xFFE066, emissive: 0xC97B00, name: "rare-gold" };
+
+function makeBubbleMaterial(isRare: boolean): { mat: THREE.MeshPhysicalMaterial; palette: { color: number; emissive: number } } {
+  const palette = isRare
+    ? RARE_PALETTE
+    : MYSTIC_PALETTE[Math.floor(Math.random() * MYSTIC_PALETTE.length)];
   const mat = new THREE.MeshPhysicalMaterial({
     color: palette.color,
     emissive: palette.emissive,
-    emissiveIntensity: 0.35, // 내부에서 색이 살짝 빛남
-    metalness: 0,
-    roughness: 0.08,
-    transmission: 0.55, // 낮춰서 색이 드러나게
+    emissiveIntensity: isRare ? 0.9 : 0.35,
+    metalness: isRare ? 0.4 : 0,
+    roughness: isRare ? 0.05 : 0.08,
+    transmission: isRare ? 0.3 : 0.55,
     thickness: 1.2,
     ior: 1.5,
-    iridescence: 0.7, // 무지개 반사는 살짝만 (색을 가리지 않게)
+    iridescence: isRare ? 1.0 : 0.7,
     iridescenceIOR: 1.45,
     iridescenceThicknessRange: [200, 600],
     clearcoat: 1.0,
@@ -88,7 +107,7 @@ function makeBubbleMaterial(): { mat: THREE.MeshPhysicalMaterial; palette: typeo
     sheenColor: new THREE.Color(palette.color),
     transparent: true,
     opacity: 0.92,
-    envMapIntensity: 1.0,
+    envMapIntensity: isRare ? 1.6 : 1.0,
   });
   return { mat, palette };
 }
@@ -99,15 +118,17 @@ function buildGrid() {
 
   const offsetX = -((COLS - 1) * GAP) / 2;
   const offsetY = -((ROWS - 1) * GAP) / 2;
+  // 스테이지가 높을수록 레어 버블 등장률 증가 (5% → 5%+1%/stage, 최대 15%)
+  const rareRate = Math.min(0.15, 0.05 + (stage - 1) * 0.01);
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
-      const { mat, palette } = makeBubbleMaterial();
+      const isRare = Math.random() < rareRate;
+      const { mat, palette } = makeBubbleMaterial(isRare);
       const mesh = new THREE.Mesh(bubbleGeo, mat);
       const x = offsetX + c * GAP + (r % 2 === 0 ? 0 : GAP * 0.5);
       const y = offsetY + r * GAP;
       mesh.position.set(x, y, 0);
-      // 크기도 살짝 랜덤하게 다양성 부여
-      const sizeJitter = 0.92 + Math.random() * 0.16;
+      const sizeJitter = (isRare ? 1.1 : 0.92) + Math.random() * 0.12;
       mesh.scale.setScalar(sizeJitter);
       scene.add(mesh);
       bubbles.push({
@@ -117,6 +138,7 @@ function buildGrid() {
         color: palette.color,
         emissive: palette.emissive,
         floatPhase: Math.random() * Math.PI * 2,
+        rare: isRare,
       });
     }
   }
@@ -139,26 +161,14 @@ const shardGeos = [
   new THREE.OctahedronGeometry(0.09, 0),
 ];
 
-type Flash = { mesh: THREE.Mesh; life: number; maxScale: number };
+type Flash = { mesh: THREE.Mesh; life: number; maxScale: number; decay: number };
 const flashes: Flash[] = [];
 const ringGeo = new THREE.TorusGeometry(0.4, 0.06, 8, 32);
-const flashSphereGeo = new THREE.SphereGeometry(0.5, 16, 16);
 
-function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number) {
-  // 1. 중앙 플래시 (구체 - 빠르게 확장하며 사라짐)
-  const flashMat = new THREE.MeshBasicMaterial({
-    color: 0xffffff,
-    transparent: true,
-    opacity: 1,
-    blending: THREE.AdditiveBlending,
-    depthWrite: false,
-  });
-  const flash = new THREE.Mesh(flashSphereGeo, flashMat);
-  flash.position.copy(pos);
-  scene.add(flash);
-  flashes.push({ mesh: flash, life: 1, maxScale: 2.4 });
+function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number, isRare: boolean = false) {
+  // 흰 행성(중앙 플래시 구체) 제거. 컬러 링 + 파편으로만 폭발.
 
-  // 2. 컬러 링 (도넛 - 외곽으로 확장)
+  // 1. 컬러 링 (도넛 - 외곽으로 확장)
   const ringMat = new THREE.MeshBasicMaterial({
     color,
     transparent: true,
@@ -171,14 +181,32 @@ function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number) {
   ring.position.copy(pos);
   ring.rotation.x = Math.PI / 2;
   scene.add(ring);
-  flashes.push({ mesh: ring, life: 1, maxScale: 4.5 });
+  flashes.push({ mesh: ring, life: 1, maxScale: isRare ? 6.5 : 4.5, decay: 0.05 });
 
-  // 3. 다양한 모양·크기 파편 30개 (도파민 양 확보)
-  const SHARD_COUNT = 30;
+  // 1-b. 레어 버블이면 2차 외곽 링 추가 (이중 충격파)
+  if (isRare) {
+    const ring2Mat = new THREE.MeshBasicMaterial({
+      color: 0xffffff,
+      transparent: true,
+      opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    const ring2 = new THREE.Mesh(ringGeo, ring2Mat);
+    ring2.position.copy(pos);
+    ring2.rotation.x = Math.PI / 2;
+    scene.add(ring2);
+    flashes.push({ mesh: ring2, life: 1, maxScale: 9, decay: 0.04 });
+  }
+
+  // 2. 다양한 모양·크기 파편 (레어는 50개, 일반 30개)
+  const SHARD_COUNT = isRare ? 50 : 30;
+  const speedBoost = isRare ? 1.4 : 1.0;
   for (let i = 0; i < SHARD_COUNT; i++) {
     const geo = shardGeos[i % shardGeos.length];
-    // 70%는 버블 본연 색, 30%는 흰색/이리데센스 보조
-    const isAccent = Math.random() < 0.3;
+    // 일반: 70% 본연색 / 30% 흰색. 레어: 50% 골드 / 50% 흰색
+    const isAccent = Math.random() < (isRare ? 0.5 : 0.3);
     const c = isAccent ? 0xffffff : (Math.random() < 0.5 ? color : emissive);
     const mat = new THREE.MeshBasicMaterial({
       color: c,
@@ -189,13 +217,13 @@ function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number) {
     });
     const m = new THREE.Mesh(geo, mat);
     m.position.copy(pos);
-    const startScale = 0.6 + Math.random() * 0.8;
+    const startScale = (0.6 + Math.random() * 0.8) * (isRare ? 1.2 : 1);
     m.scale.setScalar(startScale);
     scene.add(m);
     // 구형 사방으로 폭발 + 위쪽 살짝 가중
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.random() * Math.PI;
-    const speed = 0.1 + Math.random() * 0.12;
+    const speed = (0.1 + Math.random() * 0.12) * speedBoost;
     const dir = new THREE.Vector3(
       Math.sin(phi) * Math.cos(theta),
       Math.sin(phi) * Math.sin(theta) + 0.2,
@@ -211,7 +239,7 @@ function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number) {
   }
 
   // 4. 화면 섬광 (CSS overlay)
-  triggerScreenFlash(color);
+  triggerScreenFlash(isRare ? 0xffd66b : color);
 }
 
 // CSS 섬광 오버레이
@@ -284,7 +312,33 @@ function hapticPop() {
 // ---------- 5. 인터랙션: 레이캐스트 ----------
 const raycaster = new THREE.Raycaster();
 const ndc = new THREE.Vector2();
-let score = 0;
+
+function bumpCombo() {
+  const now = performance.now();
+  if (now - lastPopTime < COMBO_WINDOW) {
+    comboCount = Math.min(comboCount + 1, 99);
+  } else {
+    comboCount = 1;
+  }
+  lastPopTime = now;
+  if (comboCount >= 2) {
+    comboValueEl.textContent = String(comboCount);
+    comboEl.setAttribute("data-show", "true");
+    comboEl.setAttribute("data-pulse", "true");
+    requestAnimationFrame(() => comboEl.setAttribute("data-pulse", "false"));
+  }
+  if (comboHideTimer) window.clearTimeout(comboHideTimer);
+  comboHideTimer = window.setTimeout(() => {
+    comboEl.setAttribute("data-show", "false");
+    comboCount = 0;
+  }, COMBO_WINDOW + 200);
+}
+
+function showStageToast(n: number) {
+  stageToastNumEl.textContent = String(n);
+  stageToastEl.setAttribute("data-show", "true");
+  setTimeout(() => stageToastEl.setAttribute("data-show", "false"), 1400);
+}
 
 function tryPopAt(clientX: number, clientY: number) {
   ndc.x = (clientX / window.innerWidth) * 2 - 1;
@@ -297,10 +351,14 @@ function tryPopAt(clientX: number, clientY: number) {
   const bubble = bubbles.find((b) => b.mesh === hitMesh);
   if (!bubble || bubble.popped) return;
   bubble.popped = true;
-  spawnExplosion(bubble.mesh.position, bubble.color, bubble.emissive);
+  spawnExplosion(bubble.mesh.position, bubble.color, bubble.emissive, bubble.rare);
   pop(bubble.color);
   hapticPop();
-  score += 1;
+  bumpCombo();
+  // 점수: 레어 5배 + 콤보 배수 (콤보 2 이상부터 추가)
+  const basePoints = bubble.rare ? 5 : 1;
+  const comboBonus = comboCount >= 2 ? Math.floor(comboCount / 2) : 0;
+  score += basePoints + comboBonus;
   scoreEl.textContent = String(score);
   // 페이드아웃 후 제거
   const mat = bubble.mesh.material as THREE.MeshPhysicalMaterial;
@@ -308,15 +366,18 @@ function tryPopAt(clientX: number, clientY: number) {
   const fade = () => {
     const t = (performance.now() - fadeStart) / 200;
     mat.opacity = Math.max(0, 0.85 * (1 - t));
-    bubble.mesh.scale.setScalar(1 + t * 0.4);
+    bubble.mesh.scale.multiplyScalar(1 + 0.012); // 빠르게 커지며 사라짐
     if (t < 1) requestAnimationFrame(fade);
     else scene.remove(bubble.mesh);
   };
   fade();
 
-  // 모든 버블 터지면 재생성
+  // 모든 버블 터지면 → 스테이지 클리어 토스트 + 다음 스테이지
   if (bubbles.every((b) => b.popped)) {
-    setTimeout(() => buildGrid(), 400);
+    stage += 1;
+    stageEl.textContent = String(stage);
+    showStageToast(stage);
+    setTimeout(() => buildGrid(), 1100);
   }
 }
 
@@ -365,7 +426,7 @@ function tick() {
   // 플래시·링 업데이트 (빠르게 확장하며 페이드)
   for (let i = flashes.length - 1; i >= 0; i--) {
     const f = flashes[i];
-    f.life -= 0.04;
+    f.life -= f.decay;
     const progress = 1 - f.life;
     const scale = 0.1 + progress * f.maxScale;
     f.mesh.scale.setScalar(scale);
