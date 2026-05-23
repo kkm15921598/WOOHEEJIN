@@ -161,11 +161,25 @@ function makeBubbleMaterial(isRare: boolean) {
 }
 
 // ---------- 레벨 시스템 ----------
+// 레벨별 cols×rows 꽉 찬 격자 (빈 자리 없이 딱 맞게)
+const LEVEL_GRIDS: { cols: number; rows: number }[] = [
+  { cols: 2, rows: 2 },   // Lv.1:  4개
+  { cols: 3, rows: 2 },   // Lv.2:  6개
+  { cols: 3, rows: 3 },   // Lv.3:  9개
+  { cols: 4, rows: 3 },   // Lv.4: 12개
+  { cols: 4, rows: 4 },   // Lv.5: 16개
+  { cols: 5, rows: 4 },   // Lv.6: 20개
+  { cols: 5, rows: 5 },   // Lv.7: 25개
+  { cols: 5, rows: 6 },   // Lv.8: 30개
+  { cols: 6, rows: 7 },   // Lv.9: 42개
+  { cols: 6, rows: 9 },   // Lv.10: 54개
+];
+
+function levelGrid() {
+  return LEVEL_GRIDS[Math.min(level - 1, LEVEL_GRIDS.length - 1)];
+}
 function levelScale(): number {
   return Math.max(0.45, 1.4 - (level - 1) * 0.1);
-}
-function levelCount(): number {
-  return Math.round(9 + (level - 1) * (COLS * ROWS - 9) / 9);
 }
 function updateLevelHud() {
   levelNumEl.textContent = String(level);
@@ -176,19 +190,16 @@ function clearBubbles() {
   bubbles.length = 0;
 }
 
-// ---- 명상: 격자 (수직수평, 가만히) ----
+// ---- 명상: 격자 (수직수평, 가만히, 꽉 참) ----
 function buildMeditationGrid() {
   clearBubbles();
-  const count = levelCount();
+  const { cols, rows } = levelGrid();
   const ls = levelScale();
-  const cols = Math.min(COLS, Math.ceil(Math.sqrt(count * 1.2)));
-  const rows = Math.ceil(count / cols);
-  const gap = GAP * (ls > 1 ? 1.2 : 1);
+  const gap = GAP;
   const offsetX = -((cols - 1) * gap) / 2;
   const offsetY = -((rows - 1) * gap) / 2;
-  let placed = 0;
-  for (let r = 0; r < rows && placed < count; r++) {
-    for (let c = 0; c < cols && placed < count; c++) {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
       const isRare = Math.random() < 0.06;
       const { mat, palette } = makeBubbleMaterial(isRare);
       const mesh = new THREE.Mesh(bubbleGeo, mat);
@@ -200,19 +211,19 @@ function buildMeditationGrid() {
         color: palette.color, emissive: palette.emissive,
         floatPhase: Math.random() * Math.PI * 2, rare: isRare,
       });
-      placed++;
     }
   }
   gridStartTime = performance.now();
   updateRemaining();
 }
 
-// ---- 몰입: 자유 배치 (랜덤, 움직임) ----
+// ---- 몰입: 자유 배치 (랜덤, 움직임, 꽉 찬 개수) ----
 function buildImmersionGrid() {
   clearBubbles();
-  const count = levelCount();
+  const { cols, rows } = levelGrid();
+  const count = cols * rows;
   const ls = levelScale();
-  const spread = 5 + level * 0.5;
+  const spread = 4 + level * 0.6;
   for (let i = 0; i < count; i++) {
     const isRare = Math.random() < 0.08;
     const { mat, palette } = makeBubbleMaterial(isRare);
