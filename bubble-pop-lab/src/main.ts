@@ -236,12 +236,12 @@ function buildImmersionGrid() {
 
 // ---- 스트레스: 글자별 큰 버블 (2안) ----
 const STRESS_COLORS = [
-  { bg: "#FF6B8A", text: "#FFFFFF" },
-  { bg: "#7C6BFF", text: "#FFFFFF" },
-  { bg: "#FF8C42", text: "#FFFFFF" },
-  { bg: "#4ECDC4", text: "#FFFFFF" },
-  { bg: "#FF5E78", text: "#FFFFFF" },
-  { bg: "#A78BFA", text: "#FFFFFF" },
+  { bg: "#E8364F", text: "#FFFFFF" },
+  { bg: "#6C3CE9", text: "#FFFFFF" },
+  { bg: "#E86A10", text: "#FFFFFF" },
+  { bg: "#0EA38E", text: "#FFFFFF" },
+  { bg: "#D63384", text: "#FFFFFF" },
+  { bg: "#4338CA", text: "#FFFFFF" },
 ];
 
 function makeTextTexture(char: string, bgColor: string, textColor: string): THREE.CanvasTexture {
@@ -264,14 +264,17 @@ function makeTextTexture(char: string, bgColor: string, textColor: string): THRE
   cx.arc(size / 2, size / 2, size * 0.43, 0, Math.PI * 2);
   cx.stroke();
 
-  // 글자 (굵고 크게)
-  cx.fillStyle = textColor;
-  cx.font = `900 ${size * 0.48}px sans-serif`;
+  // 글자 (굵고 크게 + 외곽선)
+  cx.font = `900 ${size * 0.52}px sans-serif`;
   cx.textAlign = "center";
   cx.textBaseline = "middle";
-  cx.shadowColor = "rgba(0,0,0,0.25)";
-  cx.shadowBlur = 12;
+  cx.shadowColor = "rgba(0,0,0,0.4)";
+  cx.shadowBlur = 16;
   cx.shadowOffsetY = 4;
+  cx.strokeStyle = "rgba(0,0,0,0.15)";
+  cx.lineWidth = 8;
+  cx.strokeText(char, size / 2, size / 2 + 4);
+  cx.fillStyle = textColor;
   cx.fillText(char, size / 2, size / 2 + 4);
 
   const tex = new THREE.CanvasTexture(cv);
@@ -727,17 +730,20 @@ function tick() {
   for (const b of bubbles) {
     if (b.popped) continue;
     if (mode === "immersion" && playing) {
-      // 몰입: 자유롭게 떠다님, 레벨↑ = 더 심하게
       const mult = 1 + (level - 1) * 0.18;
       b.mesh.position.y = b.basePos.y + Math.sin(t * 1.8 * mult + b.floatPhase) * 0.15 * mult;
       b.mesh.position.x = b.basePos.x + Math.cos(t * 1.3 * mult + b.floatPhase) * 0.12 * mult;
       b.mesh.position.z = b.basePos.z + Math.sin(t * 0.9 * mult + b.floatPhase * 2) * 0.08 * mult;
+      b.mesh.rotation.y = t * 0.15 + b.floatPhase;
     } else if (mode === "stress") {
-      // 스트레스: 살짝만 흔들림
-      b.mesh.position.y = b.basePos.y + Math.sin(t * 0.8 + b.floatPhase) * 0.04;
+      // 스트레스: 통통 튀기 (회전 없음 → 글자 항상 정면)
+      b.mesh.position.y = b.basePos.y + Math.abs(Math.sin(t * 1.5 + b.floatPhase)) * 0.15;
+      b.mesh.position.x = b.basePos.x + Math.sin(t * 0.6 + b.floatPhase) * 0.06;
+      b.mesh.rotation.y = 0; // 고정
+    } else {
+      // 명상: 가만히
+      b.mesh.rotation.y = 0;
     }
-    // 명상: 가만히 (basePos 그대로)
-    b.mesh.rotation.y = t * 0.15 + b.floatPhase;
   }
 
   for (let i = flashes.length - 1; i >= 0; i--) {
