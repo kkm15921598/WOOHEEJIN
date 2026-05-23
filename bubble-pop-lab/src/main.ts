@@ -3,29 +3,26 @@ import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment
 import {
   type Mode,
   getTodayCount,
-  getTotalCount,
+  getMonthCount,
   addPops,
   checkMilestone,
   clearPraise,
   milestonePraise,
   pickResultPraise,
+  dailyPraise,
+  currentMonthLabel,
   IMMERSION_START_MS,
   IMMERSION_BONUS_MS,
 } from "./modes";
-import {
-  COLS,
-  ROWS,
-  type PatternMask,
-  fullMask,
-  todayPattern,
-  todayPatternName,
-} from "./patterns";
+import { COLS, ROWS, type PatternMask, fullMask, todayPattern, todayPatternName } from "./patterns";
 import { buildShareCard, shareOrDownload } from "./share";
+import { startMeditationMusic, startImmersionMusic, stopAll as stopMusic } from "./music";
 
 // ---------- DOM ----------
 const canvas = document.getElementById("scene") as HTMLCanvasElement;
 const todayCountEl = document.getElementById("todayCount")!;
-const totalCountEl = document.getElementById("totalCount")!;
+const monthCountEl = document.getElementById("monthCount")!;
+const monthLabelEl = document.getElementById("monthLabel")!;
 const hero = document.getElementById("hero")!;
 const heroPatternName = document.getElementById("heroPatternName")!;
 const btnMeditation = document.getElementById("btnMeditation")!;
@@ -40,7 +37,9 @@ const clearTextEl = document.getElementById("clearText")!;
 const immersionHud = document.getElementById("immersionHud") as HTMLElement;
 const immersionTimerEl = document.getElementById("immersionTimer")!;
 const immersionBonusEl = document.getElementById("immersionBonus")!;
-const btnStop = document.getElementById("btnStop")!;
+const btnStop = document.getElementById("btnStop") as HTMLElement;
+const monthInfo = document.getElementById("monthInfo") as HTMLElement;
+const monthInfoText = document.getElementById("monthInfoText")!;
 const resultEl = document.getElementById("result")!;
 const resultTitle = document.getElementById("resultTitle")!;
 const resultCount = document.getElementById("resultCount")!;
@@ -78,15 +77,15 @@ scene.add(auraLight);
 
 // ---------- 게임 상태 ----------
 let mode: Mode = "meditation";
-let sessionCount = 0;        // 이번 세션에서 터트린 개수
-let gridClears = 0;          // 그리드 클리어 횟수
-let gridStartTime = 0;       // 현재 그리드 시작 시각
-let sessionStartTime = 0;    // 세션 시작 시각
+let sessionCount = 0;
+let gridClears = 0;
+let gridStartTime = 0;
+let sessionStartTime = 0;
 let comboCount = 0;
 let lastPopTime = 0;
 const COMBO_WINDOW = 600;
 let comboHideTimer: number | null = null;
-let immersionRemaining = 0;  // 몰입 모드 남은 시간 (ms)
+let immersionRemaining = 0;
 let immersionLastTick = 0;
 let playing = false;
 
@@ -122,28 +121,18 @@ const MYSTIC_PALETTE = [
 const RARE_PALETTE = { color: 0xFFE066, emissive: 0xC97B00 };
 
 function makeBubbleMaterial(isRare: boolean) {
-  const palette = isRare
-    ? RARE_PALETTE
-    : MYSTIC_PALETTE[Math.floor(Math.random() * MYSTIC_PALETTE.length)];
+  const palette = isRare ? RARE_PALETTE : MYSTIC_PALETTE[Math.floor(Math.random() * MYSTIC_PALETTE.length)];
   const mat = new THREE.MeshPhysicalMaterial({
-    color: palette.color,
-    emissive: palette.emissive,
+    color: palette.color, emissive: palette.emissive,
     emissiveIntensity: isRare ? 0.9 : 0.35,
-    metalness: isRare ? 0.4 : 0,
-    roughness: isRare ? 0.05 : 0.08,
-    transmission: isRare ? 0.3 : 0.55,
-    thickness: 1.2,
-    ior: 1.5,
-    iridescence: isRare ? 1.0 : 0.7,
-    iridescenceIOR: 1.45,
+    metalness: isRare ? 0.4 : 0, roughness: isRare ? 0.05 : 0.08,
+    transmission: isRare ? 0.3 : 0.55, thickness: 1.2, ior: 1.5,
+    iridescence: isRare ? 1.0 : 0.7, iridescenceIOR: 1.45,
     iridescenceThicknessRange: [200, 600],
-    clearcoat: 1.0,
-    clearcoatRoughness: 0.04,
-    sheen: 1.0,
-    sheenRoughness: 0.25,
+    clearcoat: 1.0, clearcoatRoughness: 0.04,
+    sheen: 1.0, sheenRoughness: 0.25,
     sheenColor: new THREE.Color(palette.color),
-    transparent: true,
-    opacity: 0.92,
+    transparent: true, opacity: 0.92,
     envMapIntensity: isRare ? 1.6 : 1.0,
   });
   return { mat, palette };
@@ -152,10 +141,8 @@ function makeBubbleMaterial(isRare: boolean) {
 function buildGrid(mask: PatternMask = fullMask()) {
   for (const b of bubbles) scene.remove(b.mesh);
   bubbles.length = 0;
-
   const offsetX = -((COLS - 1) * GAP) / 2;
   const offsetY = -((ROWS - 1) * GAP) / 2;
-
   for (let r = 0; r < ROWS; r++) {
     for (let c = 0; c < COLS; c++) {
       const i = r * COLS + c;
@@ -166,8 +153,7 @@ function buildGrid(mask: PatternMask = fullMask()) {
       const x = offsetX + c * GAP + (r % 2 === 0 ? 0 : GAP * 0.5);
       const y = offsetY + r * GAP;
       mesh.position.set(x, y, 0);
-      const s = (isRare ? 1.1 : 0.92) + Math.random() * 0.12;
-      mesh.scale.setScalar(s);
+      mesh.scale.setScalar((isRare ? 1.1 : 0.92) + Math.random() * 0.12);
       scene.add(mesh);
       bubbles.push({
         mesh, popped: false, basePos: mesh.position.clone(),
@@ -183,68 +169,47 @@ function buildGrid(mask: PatternMask = fullMask()) {
 type Shard = { mesh: THREE.Mesh; velocity: THREE.Vector3; life: number; spin: THREE.Vector3; startScale: number };
 const shards: Shard[] = [];
 const shardGeos = [
-  new THREE.IcosahedronGeometry(0.08, 0),
-  new THREE.TetrahedronGeometry(0.1, 0),
-  new THREE.SphereGeometry(0.07, 8, 8),
-  new THREE.OctahedronGeometry(0.09, 0),
+  new THREE.IcosahedronGeometry(0.08, 0), new THREE.TetrahedronGeometry(0.1, 0),
+  new THREE.SphereGeometry(0.07, 8, 8), new THREE.OctahedronGeometry(0.09, 0),
 ];
 type Flash = { mesh: THREE.Mesh; life: number; maxScale: number; decay: number };
 const flashes: Flash[] = [];
 const ringGeo = new THREE.TorusGeometry(0.4, 0.06, 8, 32);
 
 function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number, isRare: boolean) {
-  const ringMat = new THREE.MeshBasicMaterial({
-    color, transparent: true, opacity: 1,
-    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-  });
+  const ringMat = new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.position.copy(pos); ring.rotation.x = Math.PI / 2;
   scene.add(ring);
   flashes.push({ mesh: ring, life: 1, maxScale: isRare ? 6.5 : 4.5, decay: 0.05 });
-
   if (isRare) {
-    const r2m = new THREE.MeshBasicMaterial({
-      color: 0xffffff, transparent: true, opacity: 0.8,
-      blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide,
-    });
+    const r2m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const r2 = new THREE.Mesh(ringGeo, r2m);
     r2.position.copy(pos); r2.rotation.x = Math.PI / 2;
     scene.add(r2);
     flashes.push({ mesh: r2, life: 1, maxScale: 9, decay: 0.04 });
   }
-
   const count = isRare ? 50 : 30;
   const boost = isRare ? 1.4 : 1.0;
   for (let i = 0; i < count; i++) {
     const geo = shardGeos[i % shardGeos.length];
-    const isAcc = Math.random() < (isRare ? 0.5 : 0.3);
-    const c = isAcc ? 0xffffff : (Math.random() < 0.5 ? color : emissive);
-    const mat = new THREE.MeshBasicMaterial({
-      color: c, transparent: true, opacity: 1,
-      blending: THREE.AdditiveBlending, depthWrite: false,
-    });
+    const c = (Math.random() < (isRare ? 0.5 : 0.3)) ? 0xffffff : (Math.random() < 0.5 ? color : emissive);
+    const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
     const m = new THREE.Mesh(geo, mat);
     m.position.copy(pos);
     const ss = (0.6 + Math.random() * 0.8) * (isRare ? 1.2 : 1);
-    m.scale.setScalar(ss);
-    scene.add(m);
+    m.scale.setScalar(ss); scene.add(m);
     const theta = Math.random() * Math.PI * 2;
     const phi = Math.random() * Math.PI;
-    const speed = (0.1 + Math.random() * 0.12) * boost;
-    const dir = new THREE.Vector3(
-      Math.sin(phi) * Math.cos(theta),
-      Math.sin(phi) * Math.sin(theta) + 0.2,
-      Math.cos(phi) * 0.4,
-    );
-    shards.push({ mesh: m, velocity: dir.multiplyScalar(speed), life: 1,
+    const dir = new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.sin(phi) * Math.sin(theta) + 0.2, Math.cos(phi) * 0.4);
+    shards.push({ mesh: m, velocity: dir.multiplyScalar((0.1 + Math.random() * 0.12) * boost), life: 1,
       spin: new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(0.3), startScale: ss });
   }
   triggerScreenFlash(isRare ? 0xffd66b : color);
 }
 
 const flashOverlay = document.createElement("div");
-flashOverlay.style.cssText =
-  "position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity 280ms cubic-bezier(0.32,0.72,0,1);mix-blend-mode:screen;";
+flashOverlay.style.cssText = "position:fixed;inset:0;pointer-events:none;z-index:5;opacity:0;transition:opacity 280ms cubic-bezier(0.32,0.72,0,1);mix-blend-mode:screen;";
 document.body.appendChild(flashOverlay);
 function triggerScreenFlash(color: number) {
   const hex = "#" + color.toString(16).padStart(6, "0");
@@ -258,17 +223,12 @@ let audioCtx: AudioContext | null = null;
 function pop(color: number) {
   if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   const ctx = audioCtx;
-  const r = ((color >> 16) & 0xff) / 255;
-  const g = ((color >> 8) & 0xff) / 255;
-  const b = (color & 0xff) / 255;
-  const tone = r * 0.3 + g * 0.5 + b * 0.2;
-  const base = 320 + tone * 380;
+  const r = ((color >> 16) & 0xff) / 255, g = ((color >> 8) & 0xff) / 255, b = (color & 0xff) / 255;
+  const base = 320 + (r * 0.3 + g * 0.5 + b * 0.2) * 380;
   const o1 = ctx.createOscillator(); const g1 = ctx.createGain();
   o1.type = "sine"; o1.connect(g1).connect(ctx.destination);
-  o1.frequency.value = base;
-  o1.frequency.exponentialRampToValueAtTime(base * 0.45, ctx.currentTime + 0.18);
-  g1.gain.value = 0;
-  g1.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.005);
+  o1.frequency.value = base; o1.frequency.exponentialRampToValueAtTime(base * 0.45, ctx.currentTime + 0.18);
+  g1.gain.value = 0; g1.gain.linearRampToValueAtTime(0.18, ctx.currentTime + 0.005);
   g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.22);
   o1.start(); o1.stop(ctx.currentTime + 0.25);
   const o2 = ctx.createOscillator(); const g2 = ctx.createGain();
@@ -277,12 +237,6 @@ function pop(color: number) {
   g2.gain.linearRampToValueAtTime(0.08, ctx.currentTime + 0.01);
   g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.28);
   o2.start(); o2.stop(ctx.currentTime + 0.3);
-  const noiseBuffer = ctx.createBuffer(1, ctx.sampleRate * 0.05, ctx.sampleRate);
-  const nd = noiseBuffer.getChannelData(0);
-  for (let i = 0; i < nd.length; i++) nd[i] = (Math.random() - 0.5) * Math.exp(-i / (ctx.sampleRate * 0.01));
-  const noise = ctx.createBufferSource(); const ng = ctx.createGain();
-  noise.buffer = noiseBuffer; ng.gain.value = 0.12;
-  noise.connect(ng).connect(ctx.destination); noise.start();
 }
 function hapticPop() { if (navigator.vibrate) navigator.vibrate([8, 20, 12]); }
 
@@ -304,15 +258,16 @@ function bumpCombo() {
   comboHideTimer = window.setTimeout(() => { comboEl.setAttribute("data-show", "false"); comboCount = 0; }, COMBO_WINDOW + 200);
 }
 
-function showToast(el: HTMLElement, textEl: HTMLElement, msg: string, durationMs: number = 1400) {
+function showToast(el: HTMLElement, textEl: HTMLElement, msg: string, ms = 1400) {
   textEl.textContent = msg;
   el.setAttribute("data-show", "true");
-  setTimeout(() => el.setAttribute("data-show", "false"), durationMs);
+  setTimeout(() => el.setAttribute("data-show", "false"), ms);
 }
 
 function refreshCounters() {
   todayCountEl.textContent = getTodayCount().toLocaleString();
-  totalCountEl.textContent = getTotalCount().toLocaleString();
+  monthCountEl.textContent = getMonthCount().toLocaleString();
+  monthLabelEl.textContent = currentMonthLabel();
 }
 
 function tryPopAt(clientX: number, clientY: number) {
@@ -331,17 +286,13 @@ function tryPopAt(clientX: number, clientY: number) {
   pop(bubble.color);
   hapticPop();
   bumpCombo();
-
-  // 점수 = 터트림 개수 (단순 +1)
   sessionCount += 1;
   addPops(1);
   refreshCounters();
 
-  // 마일스톤 체크
   const ms = checkMilestone();
   if (ms) showToast(praiseToastEl, praiseTextEl, milestonePraise(ms), 2200);
 
-  // 버블 페이드아웃
   const mat = bubble.mesh.material as THREE.MeshPhysicalMaterial;
   const fadeStart = performance.now();
   const fade = () => {
@@ -353,7 +304,6 @@ function tryPopAt(clientX: number, clientY: number) {
   };
   fade();
 
-  // 그리드 클리어 체크
   if (bubbles.every((b) => b.popped)) {
     gridClears += 1;
     const gridTime = (performance.now() - gridStartTime) / 1000;
@@ -368,6 +318,7 @@ function tryPopAt(clientX: number, clientY: number) {
         immersionBonusEl.setAttribute("data-show", "true");
         setTimeout(() => immersionBonusEl.setAttribute("data-show", "false"), 800);
       }
+      // 명상·몰입: 자동으로 새 그리드 재생성
       setTimeout(() => buildGrid(fullMask()), 600);
     }
   }
@@ -381,18 +332,15 @@ canvas.addEventListener("pointercancel", () => { dragging = false; });
 canvas.addEventListener("pointerleave", () => { dragging = false; });
 
 // ---------- 6. 모드 흐름 ----------
-function formatTime(ms: number): string {
-  const totalSec = Math.max(0, Math.ceil(ms / 1000));
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
+function formatElapsed(ms: number): string {
+  const s = Math.floor(ms / 1000);
+  const m = Math.floor(s / 60);
+  return m > 0 ? `${m}분 ${s % 60}초` : `${s}초`;
 }
 
-function formatElapsed(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${m}분 ${s}초`;
+function formatTime(ms: number): string {
+  const s = Math.max(0, Math.ceil(ms / 1000));
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
 }
 
 function startMode(m: Mode) {
@@ -404,6 +352,8 @@ function startMode(m: Mode) {
   hero.classList.add("is-hidden");
   resultEl.setAttribute("data-show", "false");
   resultEl.setAttribute("hidden", "");
+  btnStop.removeAttribute("hidden");
+  monthInfo.setAttribute("hidden", "");
   refreshCounters();
 
   if (m === "immersion") {
@@ -411,67 +361,63 @@ function startMode(m: Mode) {
     immersionLastTick = performance.now();
     immersionHud.removeAttribute("hidden");
     immersionTimerEl.textContent = formatTime(IMMERSION_START_MS);
+    startImmersionMusic();
     buildGrid(fullMask());
   } else if (m === "daily") {
     immersionHud.setAttribute("hidden", "");
+    stopMusic();
     buildGrid(todayPattern().mask);
   } else {
     immersionHud.setAttribute("hidden", "");
+    startMeditationMusic();
     buildGrid(fullMask());
   }
 }
 
 function endSession() {
   playing = false;
+  btnStop.setAttribute("hidden", "");
   immersionHud.setAttribute("hidden", "");
-  const elapsed = performance.now() - sessionStartTime;
+  stopMusic();
 
+  const elapsed = performance.now() - sessionStartTime;
   let title: string;
+  let praise: string;
   let summary: string;
-  if (mode === "immersion") {
-    title = `${formatElapsed(elapsed)} 동안 몰입!`;
-    summary = `그리드 ${gridClears}번 클리어`;
-  } else if (mode === "daily") {
-    const gridTime = (performance.now() - gridStartTime) / 1000;
+
+  if (mode === "daily") {
     title = `오늘의 ${todayPatternName()} 완성!`;
-    summary = `${Math.floor(gridTime)}초 만에 클리어`;
+    praise = dailyPraise(todayPatternName());
+    summary = `${Math.floor(elapsed / 1000)}초 만에 클리어`;
+  } else if (mode === "immersion") {
+    title = `${formatElapsed(elapsed)} 동안 몰입!`;
+    praise = pickResultPraise();
+    summary = `그리드 ${gridClears}번 클리어`;
   } else {
     title = "시원하게 비웠어요";
+    praise = pickResultPraise();
     summary = `${formatElapsed(elapsed)} 동안 뽁뽁`;
   }
 
   resultTitle.textContent = title;
   resultCount.textContent = sessionCount.toLocaleString();
-  resultPraise.textContent = pickResultPraise();
+  resultPraise.textContent = praise;
   resultSummary.textContent = summary;
 
-  // 다른 모드 추천
-  if (mode === "meditation") {
-    btnOther.textContent = "몰입으로 진하게";
-  } else if (mode === "immersion") {
-    btnOther.textContent = "명상으로 쉬기";
-  } else {
-    btnOther.textContent = "명상 모드로";
-  }
+  if (mode === "meditation") btnOther.textContent = "몰입 모드 해보기";
+  else if (mode === "immersion") btnOther.textContent = "명상 모드로 쉬기";
+  else btnOther.textContent = "명상 모드 해보기";
 
   resultEl.removeAttribute("hidden");
   requestAnimationFrame(() => resultEl.setAttribute("data-show", "true"));
 }
 
-// 명상 모드 "그만하기" — 화면 터치 외 별도 버튼 필요
-// → HUD 우측에 작은 "그만하기" 버튼을 공통으로 둔다 (immersionHud 바깥에 별도)
-const globalStop = document.createElement("button");
-globalStop.className = "global-stop";
-globalStop.textContent = "그만하기";
-globalStop.addEventListener("click", () => { if (playing) endSession(); });
-document.getElementById("app")!.appendChild(globalStop);
-
+// 그만하기 — 실수 방지: 확인 모달 대신 우상단 배치 (뽁뽁이 영역과 분리)
 btnStop.addEventListener("click", () => { if (playing) endSession(); });
 
 btnMeditation.addEventListener("click", () => startMode("meditation"));
 btnImmersion.addEventListener("click", () => startMode("immersion"));
 btnDaily.addEventListener("click", () => startMode("daily"));
-
 btnReplay.addEventListener("click", () => startMode(mode));
 btnHome.addEventListener("click", () => {
   resultEl.setAttribute("data-show", "false");
@@ -479,16 +425,14 @@ btnHome.addEventListener("click", () => {
 });
 btnOther.addEventListener("click", () => {
   if (mode === "meditation") startMode("immersion");
-  else if (mode === "immersion") startMode("meditation");
   else startMode("meditation");
 });
 btnShare.addEventListener("click", async () => {
-  const praise = resultPraise.textContent ?? "";
   try {
     const blob = await buildShareCard({
       title: "오늘뽁",
       score: sessionCount,
-      subtitle: praise,
+      subtitle: resultPraise.textContent ?? "",
       patternName: mode === "daily" ? todayPatternName() : undefined,
     });
     await shareOrDownload(blob, "todapop.png", "오늘뽁", `${sessionCount}개의 스트레스를 터뜨렸어요!`);
@@ -497,7 +441,11 @@ btnShare.addEventListener("click", async () => {
 
 // 초기 표시
 heroPatternName.textContent = todayPatternName();
+monthLabelEl.textContent = currentMonthLabel();
 refreshCounters();
+
+// 월간 안내
+monthInfoText.textContent = `${currentMonthLabel()} 기록은 매달 1일에 새로 시작돼요`;
 
 // ---------- 7. 리사이즈 ----------
 window.addEventListener("resize", () => {
@@ -512,14 +460,21 @@ buildGrid(fullMask());
 const clock = new THREE.Clock();
 function tick() {
   const t = clock.getElapsedTime();
-  // 버블 둥실
+
+  // 몰입 모드: 버블 움직임 더 활발하게 (명상보다 amplitude·speed 2배)
+  const isImmersion = mode === "immersion" && playing;
+  const floatAmp = isImmersion ? 0.18 : 0.08;
+  const floatSpeed = isImmersion ? 2.4 : 1.2;
+  const driftAmp = isImmersion ? 0.10 : 0.04;
+  const driftSpeed = isImmersion ? 1.6 : 0.8;
+
   for (const b of bubbles) {
     if (b.popped) continue;
-    b.mesh.position.y = b.basePos.y + Math.sin(t * 1.2 + b.floatPhase) * 0.08;
-    b.mesh.position.x = b.basePos.x + Math.cos(t * 0.8 + b.floatPhase) * 0.04;
+    b.mesh.position.y = b.basePos.y + Math.sin(t * floatSpeed + b.floatPhase) * floatAmp;
+    b.mesh.position.x = b.basePos.x + Math.cos(t * driftSpeed + b.floatPhase) * driftAmp;
     b.mesh.rotation.y = t * 0.2 + b.floatPhase;
   }
-  // 폭발 이펙트
+
   for (let i = flashes.length - 1; i >= 0; i--) {
     const f = flashes[i];
     f.life -= f.decay;
@@ -539,20 +494,13 @@ function tick() {
     if (s.life <= 0) { scene.remove(s.mesh); shards.splice(i, 1); }
   }
 
-  // 몰입 모드 타이머 (시간이 줄어들지만 클리어 시 +5초)
   if (mode === "immersion" && playing) {
     const now = performance.now();
-    const dt = now - immersionLastTick;
+    immersionRemaining -= (now - immersionLastTick);
     immersionLastTick = now;
-    immersionRemaining -= dt;
     immersionTimerEl.textContent = formatTime(immersionRemaining);
-    if (immersionRemaining <= 0) {
-      endSession();
-    }
+    if (immersionRemaining <= 0) endSession();
   }
-
-  // 그만하기 버튼 표시
-  globalStop.style.display = playing && mode !== "immersion" ? "" : "none";
 
   renderer.render(scene, camera);
   requestAnimationFrame(tick);

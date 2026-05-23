@@ -117,6 +117,28 @@ body {
   color: var(--text-muted);
 }
 
+/* ---------- 그만하기 버튼 (우상단 구석 — 실수 방지) ---------- */
+.stop-btn {
+  position: absolute;
+  top: calc(env(safe-area-inset-top, 0) + 68px);
+  right: 16px;
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.5);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(90, 111, 255, 0.12);
+  padding: 6px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  z-index: 15;
+  transition: transform 200ms var(--ease-soft);
+}
+.stop-btn[hidden] { display: none; }
+.stop-btn:active { transform: scale(0.94); }
+
 /* ---------- 몰입 모드 HUD ---------- */
 .immersion-hud {
   position: absolute;
@@ -127,6 +149,7 @@ body {
   gap: 16px;
   align-items: center;
   z-index: 15;
+  pointer-events: none;
 }
 .immersion-hud[hidden] { display: none; }
 .immersion-hud__time {
@@ -158,47 +181,25 @@ body {
   opacity: 1;
   transform: translateY(0);
 }
-.immersion-hud__stop {
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1.5px solid rgba(90, 111, 255, 0.15);
-  padding: 10px 20px;
-  border-radius: 999px;
-  cursor: pointer;
-  pointer-events: auto;
-  transition: transform 200ms var(--ease-soft), background 200ms var(--ease-soft);
-}
-.immersion-hud__stop:active {
-  transform: scale(0.96);
-  background: rgba(255, 255, 255, 0.8);
-}
 
-/* 글로벌 그만하기 (명상/일일용) */
-.global-stop {
+/* 월간 안내 */
+.month-info {
   position: absolute;
-  bottom: calc(env(safe-area-inset-bottom, 0) + 28px);
+  bottom: calc(env(safe-area-inset-bottom, 0) + 12px);
   left: 50%;
   transform: translateX(-50%);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--text-muted);
-  background: var(--glass);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1.5px solid rgba(90, 111, 255, 0.15);
-  padding: 10px 24px;
-  border-radius: 999px;
-  cursor: pointer;
-  z-index: 15;
-  transition: transform 200ms var(--ease-soft);
+  z-index: 8;
+  pointer-events: none;
 }
-.global-stop:active { transform: translateX(-50%) scale(0.96); }
+.month-info[hidden] { display: none; }
+.month-info__text {
+  font-size: 11px;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(12px);
+  padding: 6px 14px;
+  border-radius: 999px;
+}
 
 /* ---------- 칭찬 토스트 ---------- */
 .praise-toast, .clear-toast {
@@ -276,7 +277,7 @@ body {
   text-align: center;
   z-index: 20;
   padding: 24px;
-  background: radial-gradient(ellipse at center, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 70%);
+  background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 80%);
   transition: opacity 480ms var(--ease-soft), transform 480ms var(--ease-soft);
 }
 .hero.is-hidden { opacity: 0; pointer-events: none; transform: scale(1.05); }

@@ -27,20 +27,22 @@
             <span class="hud__counter-unit">개</span>
           </div>
           <div class="hud__counter hud__counter--sub">
-            <span class="hud__counter-label">누적</span>
-            <span id="totalCount" class="hud__counter-value">0</span>
+            <span id="monthLabel" class="hud__counter-label">5월</span>
+            <span id="monthCount" class="hud__counter-value">0</span>
             <span class="hud__counter-unit">개</span>
           </div>
         </div>
       </header>
 
-      <!-- 몰입 모드 HUD (시간 + 그만하기) -->
+      <!-- 그만하기 (우상단 구석, 모든 모드 공통) -->
+      <button id="btnStop" class="stop-btn" hidden>그만하기</button>
+
+      <!-- 몰입 모드 타이머 (하단) -->
       <div id="immersionHud" class="immersion-hud" hidden>
         <div class="immersion-hud__time">
           <span id="immersionTimer" class="immersion-hud__timer">1:00</span>
           <span id="immersionBonus" class="immersion-hud__bonus" data-show="false">+5</span>
         </div>
-        <button id="btnStop" class="immersion-hud__stop">그만하기</button>
       </div>
 
       <!-- 콤보 (시각 효과만) -->
@@ -50,21 +52,23 @@
         <span class="combo__label">COMBO</span>
       </div>
 
-      <!-- 칭찬 토스트 -->
+      <!-- 칭찬/클리어 토스트 -->
       <div id="praiseToast" class="praise-toast" data-show="false">
         <span id="praiseText" class="praise-toast__text"></span>
       </div>
-
-      <!-- 클리어 토스트 -->
       <div id="clearToast" class="clear-toast" data-show="false">
         <span id="clearText" class="clear-toast__text"></span>
       </div>
 
+      <!-- 월간 안내 배너 -->
+      <div id="monthInfo" class="month-info" hidden>
+        <span id="monthInfoText" class="month-info__text">이번 달 기록은 매달 1일에 새로 시작돼요</span>
+      </div>
+
       <!-- 랜딩 히어로 -->
       <section class="hero" id="hero">
-        <div class="hero__brand">WOOHEEJIN</div>
         <h1 class="hero__title">오늘뽁</h1>
-        <p class="hero__subtitle">오늘의 스트레스, 뽁뽁 터뜨려서 날려버리세요</p>
+        <p class="hero__subtitle">오늘의 스트레스, 뽁뽁 터뜨려서 날리기</p>
 
         <div class="hero__modes">
           <button id="btnMeditation" class="mode-card mode-card--meditation">
@@ -75,7 +79,7 @@
           <button id="btnImmersion" class="mode-card mode-card--immersion">
             <span class="mode-card__icon">☯</span>
             <span class="mode-card__name">몰입 모드</span>
-            <span class="mode-card__desc">진하게, 시원하게</span>
+            <span class="mode-card__desc">집중해서, 시원하게</span>
           </button>
           <button id="btnDaily" class="mode-card mode-card--daily">
             <span class="mode-card__icon">★</span>
@@ -94,14 +98,14 @@
       <!-- 결과 모달 -->
       <section class="result" id="result" hidden data-show="false">
         <div class="result__card">
-          <h2 class="result__title" id="resultTitle">시원하게 한 판!</h2>
-          <div class="result__count"><span id="resultCount">0</span><span class="result__count-unit">개</span></div>
+          <h2 class="result__title" id="resultTitle">시원하게 비웠어요</h2>
+          <div class="result__count"><span id="resultCount">0</span><span class="result__count-unit">개의 스트레스를 터뜨렸어요</span></div>
           <p class="result__praise" id="resultPraise">뽁뽁 터진 만큼, 스트레스도 터져 나갔어요.</p>
           <div class="result__summary" id="resultSummary"></div>
           <div class="result__actions">
             <button id="btnReplay" class="result__btn result__btn--primary">한 번 더</button>
-            <button id="btnShare" class="result__btn">공유</button>
-            <button id="btnOther" class="result__btn result__btn--ghost" id="btnOtherLabel">명상으로 쉬기</button>
+            <button id="btnShare" class="result__btn">공유하기</button>
+            <button id="btnOther" class="result__btn result__btn--ghost">다른 모드 해보기</button>
             <button id="btnHome" class="result__btn result__btn--ghost">홈으로</button>
           </div>
         </div>
