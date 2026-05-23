@@ -406,22 +406,28 @@ body {
   transform: translate(-50%, -50%);
   z-index: 1; pointer-events: none;
 }
+/* 스트레스 글자 오버레이 (DOM — 항상 선명) */
+.stress-char {
+  position: fixed;
+  top: 0; left: 0;
+  font-size: 42px;
+  font-weight: 900;
+  color: #fff;
+  text-shadow: 0 3px 12px rgba(0,0,0,0.4), 0 0 24px rgba(255,90,138,0.5);
+  pointer-events: none;
+  z-index: 12;
+  transition: transform 80ms ease-out;
+}
+.stress-char.is-popped {
+  animation: charExplode 500ms var(--ease-soft) forwards;
+}
+@keyframes charExplode {
+  0% { transform: translate(-50%,-50%) scale(1); opacity: 1; filter: blur(0); }
+  30% { transform: translate(-50%,-50%) scale(2); opacity: 1; color: #FFD700; filter: blur(0); text-shadow: 0 0 40px rgba(255,215,0,0.8); }
+  100% { transform: translate(-50%,-50%) scale(3.5); opacity: 0; filter: blur(8px); }
+}
+
 .stress-label[hidden] { display: none; }
-.stress-label span {
-  font-size: 64px; font-weight: 900; letter-spacing: -2px;
-  color: rgba(255,90,138,0.12);
-  white-space: nowrap;
-}
-.stress-label.is-exploding span {
-  animation: stressBurn 1.2s var(--ease-soft) forwards;
-}
-@keyframes stressBurn {
-  0% { transform: scale(1); opacity: 1; color: rgba(255,90,138,0.15); filter: blur(0); }
-  20% { transform: scale(1.15); color: rgba(255,120,50,0.8); filter: blur(0) brightness(2); }
-  50% { transform: scale(1.4); color: rgba(255,60,0,0.7); filter: blur(3px) brightness(3); }
-  80% { transform: scale(1.8); color: rgba(200,50,0,0.3); filter: blur(10px) brightness(2); }
-  100% { transform: scale(2.5); opacity: 0; filter: blur(20px) brightness(0); }
-}
 .mode-card__name { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }
 .mode-card__desc { font-size: 13px; color: var(--text-muted); font-weight: 500; }
 

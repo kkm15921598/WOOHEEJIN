@@ -245,74 +245,36 @@ function buildImmersionGrid() {
   updateRemaining();
 }
 
-// ---- 스트레스: 글자별 큰 버블 (2안) ----
+// ---- 스트레스: 글자별 큰 버블 + HTML 오버레이 글자 ----
 const STRESS_COLORS = [
-  { bg: "#E8364F", text: "#FFFFFF" },
-  { bg: "#6C3CE9", text: "#FFFFFF" },
-  { bg: "#E86A10", text: "#FFFFFF" },
-  { bg: "#0EA38E", text: "#FFFFFF" },
-  { bg: "#D63384", text: "#FFFFFF" },
-  { bg: "#4338CA", text: "#FFFFFF" },
+  "#E8364F", "#6C3CE9", "#E86A10", "#0EA38E", "#D63384", "#4338CA",
 ];
 
-function makeTextTexture(char: string, bgColor: string, textColor: string): THREE.CanvasTexture {
-  const size = 512;
-  const cv = document.createElement("canvas");
-  cv.width = size; cv.height = size;
-  const cx = cv.getContext("2d")!;
+const stressLabels: HTMLElement[] = [];
 
-  // 원형 배경
-  cx.clearRect(0, 0, size, size);
-  cx.fillStyle = bgColor;
-  cx.beginPath();
-  cx.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2);
-  cx.fill();
-
-  // 테두리 하이라이트
-  cx.strokeStyle = "rgba(255,255,255,0.4)";
-  cx.lineWidth = 6;
-  cx.beginPath();
-  cx.arc(size / 2, size / 2, size * 0.43, 0, Math.PI * 2);
-  cx.stroke();
-
-  // 글자 (굵고 크게 + 외곽선)
-  cx.font = `900 ${size * 0.52}px sans-serif`;
-  cx.textAlign = "center";
-  cx.textBaseline = "middle";
-  cx.shadowColor = "rgba(0,0,0,0.4)";
-  cx.shadowBlur = 16;
-  cx.shadowOffsetY = 4;
-  cx.strokeStyle = "rgba(0,0,0,0.15)";
-  cx.lineWidth = 8;
-  cx.strokeText(char, size / 2, size / 2 + 4);
-  cx.fillStyle = textColor;
-  cx.fillText(char, size / 2, size / 2 + 4);
-
-  const tex = new THREE.CanvasTexture(cv);
-  tex.needsUpdate = true;
-  return tex;
+function clearStressLabels() {
+  stressLabels.forEach((el) => el.remove());
+  stressLabels.length = 0;
 }
 
 function buildStressBubbles(text: string) {
   clearBubbles();
+  clearStressLabels();
   const chars = [...text];
   const count = chars.length;
-  const bubbleSize = Math.max(1.5, 2.5 - count * 0.12);
+  const bubbleSize = Math.max(1.5, 2.8 - count * 0.15);
   const spacing = bubbleSize * 1.6;
   const startX = -(count - 1) * spacing / 2;
 
   chars.forEach((char, i) => {
-    const sc = STRESS_COLORS[i % STRESS_COLORS.length];
-    const texture = makeTextTexture(char, sc.bg, sc.text);
-    const color = new THREE.Color(sc.bg);
-    const mat = new THREE.MeshStandardMaterial({
-      map: texture,
-      color: 0xffffff,
-      emissive: color,
-      emissiveIntensity: 0.15,
-      metalness: 0.05,
-      roughness: 0.3,
-    });
+    const hexColor = STRESS_COLORS[i % STRESS_COLORS.length];
+    const color = new THREE.Color(hexColor);
+    const { mat } = makeBubbleMaterial(false);
+    mat.color.set(color);
+    mat.emissive.set(color);
+    mat.emissiveIntensity = 0.25;
+    mat.transmission = 0.15;
+    mat.opacity = 0.95;
     const mesh = new THREE.Mesh(bubbleGeo, mat);
     mesh.position.set(startX + i * spacing, 0, 0);
     mesh.scale.setScalar(bubbleSize);
@@ -322,9 +284,33 @@ function buildStressBubbles(text: string) {
       color: color.getHex(), emissive: color.getHex(),
       floatPhase: Math.random() * Math.PI * 2, rare: false,
     });
+
+    // HTML 오버레이 글자 (항상 선명, 정면)
+    const label = document.createElement("div");
+    label.className = "stress-char";
+    label.textContent = char;
+    label.style.color = "#fff";
+    label.dataset.index = String(i);
+    document.getElementById("app")!.appendChild(label);
+    stressLabels.push(label);
   });
   gridStartTime = performance.now();
   updateRemaining();
+}
+
+function updateStressLabelPositions() {
+  for (let i = 0; i < stressLabels.length; i++) {
+    const b = bubbles[i];
+    if (!b || b.popped) {
+      stressLabels[i].style.display = "none";
+      continue;
+    }
+    const pos = b.mesh.position.clone().project(camera);
+    const x = (pos.x * 0.5 + 0.5) * window.innerWidth;
+    const y = (-pos.y * 0.5 + 0.5) * window.innerHeight;
+    stressLabels[i].style.transform = `translate(-50%,-50%) translate(${x}px,${y}px)`;
+    stressLabels[i].style.display = "";
+  }
 }
 
 // 히어로용 데코 버블 (대중소 랜덤 배치)
@@ -477,9 +463,17 @@ function tryPopAt(clientX: number, clientY: number) {
   const bubble = bubbles.find((b) => b.mesh === hitMesh);
   if (!bubble || bubble.popped) return;
   bubble.popped = true;
-  spawnExplosion(bubble.mesh.position, bubble.color, bubble.emissive, bubble.rare);
+  const isStressPop = mode === "stress";
+  spawnExplosion(bubble.mesh.position, bubble.color, bubble.emissive, isStressPop || bubble.rare);
   pop(bubble.color);
   hapticPop();
+  // 스트레스 모드: 라벨 폭발 애니메이션
+  if (isStressPop) {
+    const idx = bubbles.indexOf(bubble);
+    if (idx >= 0 && stressLabels[idx]) {
+      stressLabels[idx].classList.add("is-popped");
+    }
+  }
   bumpCombo();
   sessionCount += 1;
   addPops(1);
@@ -592,6 +586,7 @@ function endSession() {
   hudBrand.removeAttribute("hidden");
   immersionHud.setAttribute("hidden", "");
   gameInfoHud.setAttribute("hidden", "");
+  clearStressLabels();
 
   const elapsed = performance.now() - sessionStartTime;
   let title: string;
@@ -783,6 +778,9 @@ function tick() {
     immersionTimerEl.textContent = formatTime(immersionRemaining);
     if (immersionRemaining <= 0) endSession();
   }
+
+  // 스트레스 라벨 위치 동기화
+  if (mode === "stress" && playing) updateStressLabelPositions();
 
   // 데코 버블 느긋한 플로팅
   for (const d of decoBubbles) {
