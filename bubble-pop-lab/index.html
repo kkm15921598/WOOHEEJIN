@@ -35,9 +35,11 @@
         </div>
       </header>
 
-      <!-- 남은 개수 (하단) -->
-      <div id="remainingHud" class="remaining-hud" hidden>
-        <span>남은 </span><span id="remainingCount" class="remaining-hud__count">0</span><span>개</span>
+      <!-- 레벨 + 남은 개수 (하단) -->
+      <div id="gameInfoHud" class="game-info-hud" hidden>
+        <span class="game-info-hud__level">Lv.<span id="levelNum">1</span></span>
+        <span class="game-info-hud__sep">·</span>
+        <span>남은 <span id="remainingCount" class="game-info-hud__count">0</span>개</span>
       </div>
 
       <!-- 몰입 모드 타이머 (하단) -->
@@ -121,9 +123,12 @@
           <div class="result__summary" id="resultSummary"></div>
           <div class="result__actions">
             <button id="btnReplay" class="result__btn result__btn--primary">한 번 더</button>
-            <button id="btnHome" class="result__btn">홈으로</button>
-            <button id="btnShare" class="result__btn">공유하기</button>
+            <div class="result__row">
+              <button id="btnHome" class="result__btn">홈으로</button>
+              <button id="btnShare" class="result__btn">공유하기</button>
+            </div>
             <button id="btnOther" class="result__btn result__btn--ghost">스트레스 터뜨리기</button>
+            <button id="btnResetLevel" class="result__btn result__btn--ghost" hidden>Lv.1부터 다시 하기</button>
           </div>
         </div>
       </section>

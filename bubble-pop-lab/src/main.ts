@@ -43,7 +43,8 @@ const immersionTimerEl = document.getElementById("immersionTimer")!;
 const immersionBonusEl = document.getElementById("immersionBonus")!;
 const hudBrand = document.getElementById("hudBrand") as HTMLElement;
 const btnStop = document.getElementById("btnStop") as HTMLElement;
-const remainingHud = document.getElementById("remainingHud") as HTMLElement;
+const gameInfoHud = document.getElementById("gameInfoHud") as HTMLElement;
+const levelNumEl = document.getElementById("levelNum")!;
 const remainingCountEl = document.getElementById("remainingCount")!;
 const monthInfo = document.getElementById("monthInfo") as HTMLElement;
 const monthInfoText = document.getElementById("monthInfoText")!;
@@ -56,6 +57,7 @@ const btnReplay = document.getElementById("btnReplay")!;
 const btnShare = document.getElementById("btnShare")!;
 const btnOther = document.getElementById("btnOther")!;
 const btnHome = document.getElementById("btnHome")!;
+const btnResetLevel = document.getElementById("btnResetLevel") as HTMLElement;
 
 // ---------- 1. 씬 셋업 ----------
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
@@ -159,7 +161,26 @@ function makeBubbleMaterial(isRare: boolean) {
 
 // 레벨별 버블 크기 (1=큰, 10=작은)
 function levelScale(): number {
-  return Math.max(0.4, 1.3 - (level - 1) * 0.09);
+  return Math.max(0.45, 1.4 - (level - 1) * 0.1);
+}
+
+// 레벨별 버블 개수 (1=12개, 10=54개)
+function levelMask(): PatternMask {
+  const total = COLS * ROWS;
+  const target = Math.round(12 + (level - 1) * (total - 12) / 9);
+  const mask = fullMask();
+  const indices = Array.from({ length: total }, (_, i) => i);
+  for (let i = indices.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [indices[i], indices[j]] = [indices[j], indices[i]];
+  }
+  const toRemove = total - target;
+  for (let i = 0; i < toRemove; i++) mask[indices[i]] = false;
+  return mask;
+}
+
+function updateLevelHud() {
+  levelNumEl.textContent = String(level);
 }
 
 function buildGrid(mask: PatternMask = fullMask()) {
@@ -188,7 +209,7 @@ function buildGrid(mask: PatternMask = fullMask()) {
     }
   }
   gridStartTime = performance.now();
-  if (remainingHud) updateRemaining();
+  if (gameInfoHud) updateRemaining();
 }
 
 // 히어로용 데코 버블 (대중소 랜덤 배치)
@@ -380,6 +401,8 @@ function tryPopAt(clientX: number, clientY: number) {
     } else {
       // 레벨업 (명상·몰입 공통)
       level = Math.min(level + 1, 10);
+      updateLevelHud();
+      showToast(praiseToastEl, praiseTextEl, `Lv.${level} 돌입!`, 1200);
       if (mode === "immersion") {
         immersionRemaining += IMMERSION_BONUS_MS;
         immersionBonusEl.textContent = `+${IMMERSION_BONUS_MS / 1000}`;
@@ -387,7 +410,7 @@ function tryPopAt(clientX: number, clientY: number) {
         setTimeout(() => immersionBonusEl.setAttribute("data-show", "false"), 800);
       }
       // 명상·몰입: 자동으로 새 그리드 재생성
-      setTimeout(() => buildGrid(fullMask()), 600);
+      setTimeout(() => buildGrid(levelMask()), 600);
     }
   }
 }
@@ -424,9 +447,11 @@ function startMode(m: Mode) {
   resultEl.setAttribute("hidden", "");
   hudBrand.setAttribute("hidden", "");
   btnStop.removeAttribute("hidden");
-  remainingHud.removeAttribute("hidden");
+  gameInfoHud.removeAttribute("hidden");
   monthInfo.setAttribute("hidden", "");
   refreshCounters();
+
+  updateLevelHud();
 
   if (m === "immersion") {
     immersionRemaining = IMMERSION_START_MS;
@@ -434,7 +459,7 @@ function startMode(m: Mode) {
     immersionHud.removeAttribute("hidden");
     immersionTimerEl.textContent = formatTime(IMMERSION_START_MS);
     stressLabelEl.setAttribute("hidden", "");
-    buildGrid(fullMask());
+    buildGrid(levelMask());
   } else if (m === "stress") {
     immersionHud.setAttribute("hidden", "");
     stressLabelEl.removeAttribute("hidden");
@@ -443,7 +468,7 @@ function startMode(m: Mode) {
   } else {
     immersionHud.setAttribute("hidden", "");
     stressLabelEl.setAttribute("hidden", "");
-    buildGrid(fullMask());
+    buildGrid(levelMask());
   }
 }
 
@@ -452,7 +477,7 @@ function endSession() {
   btnStop.setAttribute("hidden", "");
   hudBrand.removeAttribute("hidden");
   immersionHud.setAttribute("hidden", "");
-  remainingHud.setAttribute("hidden", "");
+  gameInfoHud.setAttribute("hidden", "");
 
   const elapsed = performance.now() - sessionStartTime;
   let title: string;
@@ -483,6 +508,13 @@ function endSession() {
   if (mode === "meditation") btnOther.textContent = "스트레스 터뜨리기";
   else if (mode === "immersion") btnOther.textContent = "명상 모드로 쉬기";
   else btnOther.textContent = "명상 모드 해보기";
+
+  // 레벨 2 이상이면 초기화 버튼 표시
+  if (level > 1 && mode !== "stress") {
+    btnResetLevel.removeAttribute("hidden");
+  } else {
+    btnResetLevel.setAttribute("hidden", "");
+  }
 
   resultEl.removeAttribute("hidden");
   requestAnimationFrame(() => resultEl.setAttribute("data-show", "true"));
@@ -519,6 +551,10 @@ btnStressBack.addEventListener("click", () => {
   setTimeout(() => { stressInputEl.setAttribute("hidden", ""); hero.classList.remove("is-hidden"); }, 300);
 });
 btnReplay.addEventListener("click", () => startMode(mode));
+btnResetLevel.addEventListener("click", () => {
+  level = 1;
+  startMode(mode);
+});
 btnHome.addEventListener("click", () => {
   resultEl.setAttribute("data-show", "false");
   setTimeout(() => {
