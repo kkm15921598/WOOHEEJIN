@@ -1,105 +1,150 @@
+// 자연 소리 기반 앰비언트 — 노이즈 + 필터로 파도/바람 느낌
 let ctx: AudioContext | null = null;
-let activeNodes: { oscs: OscillatorNode[]; gains: GainNode[]; master: GainNode } | null = null;
+let activeSources: AudioBufferSourceNode[] = [];
+let activeGains: GainNode[] = [];
+let activeLfos: OscillatorNode[] = [];
+let masterGain: GainNode | null = null;
 
-function getCtx(): AudioContext {
+async function ensureCtx(): Promise<AudioContext> {
   if (!ctx) ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  if (ctx.state === "suspended") ctx.resume();
+  if (ctx.state === "suspended") await ctx.resume();
   return ctx;
 }
 
-export function startMeditationMusic() {
-  stopAll();
-  const c = getCtx();
-  const master = c.createGain();
-  master.gain.value = 0;
-  master.connect(c.destination);
-
-  const freqs = [130.81, 164.81, 196.00, 246.94]; // C3 E3 G3 B3 — Cmaj7
-  const oscs: OscillatorNode[] = [];
-  const gains: GainNode[] = [];
-
-  freqs.forEach((f) => {
-    const osc = c.createOscillator();
-    osc.type = "sine";
-    osc.frequency.value = f;
-    const g = c.createGain();
-    g.gain.value = 0.08;
-    osc.connect(g).connect(master);
-    osc.start();
-    oscs.push(osc);
-    gains.push(g);
-  });
-
-  // 느린 LFO — 떠다니는 느낌
-  const lfo = c.createOscillator();
-  const lfoG = c.createGain();
-  lfo.type = "sine";
-  lfo.frequency.value = 0.08;
-  lfoG.gain.value = 1.5;
-  lfo.connect(lfoG);
-  oscs.forEach((o) => lfoG.connect(o.frequency));
-  lfo.start();
-  oscs.push(lfo);
-  gains.push(lfoG);
-
-  // 페이드인
-  master.gain.linearRampToValueAtTime(0.4, c.currentTime + 3);
-  activeNodes = { oscs, gains, master };
+function makeNoise(c: AudioContext, seconds: number): AudioBuffer {
+  const len = c.sampleRate * seconds;
+  const buf = c.createBuffer(1, len, c.sampleRate);
+  const data = buf.getChannelData(0);
+  // 브라운 노이즈 (파도/바람에 가까움)
+  let last = 0;
+  for (let i = 0; i < len; i++) {
+    const white = Math.random() * 2 - 1;
+    last = (last + 0.02 * white) / 1.02;
+    data[i] = last * 3.5;
+  }
+  return buf;
 }
 
-export function startImmersionMusic() {
+// 명상: 부드러운 바람/파도 소리 — 느린 wash
+export async function startMeditationMusic() {
   stopAll();
-  const c = getCtx();
-  const master = c.createGain();
-  master.gain.value = 0;
-  master.connect(c.destination);
+  const c = await ensureCtx();
 
-  const freqs = [164.81, 207.65, 261.63, 329.63]; // E3 Ab3 C4 E4
-  const oscs: OscillatorNode[] = [];
-  const gains: GainNode[] = [];
+  masterGain = c.createGain();
+  masterGain.gain.setValueAtTime(0.001, c.currentTime);
+  masterGain.gain.linearRampToValueAtTime(0.6, c.currentTime + 3);
+  masterGain.connect(c.destination);
 
-  freqs.forEach((f) => {
-    const osc = c.createOscillator();
-    osc.type = "triangle";
-    osc.frequency.value = f;
-    const g = c.createGain();
-    g.gain.value = 0.06;
-    osc.connect(g).connect(master);
-    osc.start();
-    oscs.push(osc);
-    gains.push(g);
-  });
+  const noiseBuf = makeNoise(c, 4);
 
-  // 리듬감 있는 LFO
+  // 레이어 1: 깊은 바람
+  const src1 = c.createBufferSource();
+  src1.buffer = noiseBuf;
+  src1.loop = true;
+  const lp1 = c.createBiquadFilter();
+  lp1.type = "lowpass";
+  lp1.frequency.setValueAtTime(300, c.currentTime);
+  lp1.Q.setValueAtTime(0.5, c.currentTime);
+  const g1 = c.createGain();
+  g1.gain.setValueAtTime(0.7, c.currentTime);
+  src1.connect(lp1).connect(g1).connect(masterGain);
+  src1.start();
+
+  // 레이어 2: 높은 바람결
+  const src2 = c.createBufferSource();
+  src2.buffer = noiseBuf;
+  src2.loop = true;
+  const bp = c.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.setValueAtTime(800, c.currentTime);
+  bp.Q.setValueAtTime(1.5, c.currentTime);
+  const g2 = c.createGain();
+  g2.gain.setValueAtTime(0.15, c.currentTime);
+  src2.connect(bp).connect(g2).connect(masterGain);
+  src2.start();
+
+  // 파도 wash LFO: 필터 주파수를 천천히 올렸다 내림
   const lfo = c.createOscillator();
-  const lfoG = c.createGain();
   lfo.type = "sine";
-  lfo.frequency.value = 0.4;
-  lfoG.gain.value = 2.5;
-  lfo.connect(lfoG);
-  oscs.forEach((o) => lfoG.connect(o.frequency));
+  lfo.frequency.setValueAtTime(0.08, c.currentTime); // 12초 주기
+  const lfoG = c.createGain();
+  lfoG.gain.setValueAtTime(200, c.currentTime);
+  lfo.connect(lfoG).connect(lp1.frequency);
   lfo.start();
-  oscs.push(lfo);
-  gains.push(lfoG);
 
-  master.gain.linearRampToValueAtTime(0.35, c.currentTime + 2);
-  activeNodes = { oscs, gains, master };
+  activeSources.push(src1, src2);
+  activeGains.push(g1, g2);
+  activeLfos.push(lfo);
+}
+
+// 몰입: 더 리듬감 있는 파도 — 빠른 wash + 약간의 주파수 높임
+export async function startImmersionMusic() {
+  stopAll();
+  const c = await ensureCtx();
+
+  masterGain = c.createGain();
+  masterGain.gain.setValueAtTime(0.001, c.currentTime);
+  masterGain.gain.linearRampToValueAtTime(0.55, c.currentTime + 2);
+  masterGain.connect(c.destination);
+
+  const noiseBuf = makeNoise(c, 4);
+
+  const src1 = c.createBufferSource();
+  src1.buffer = noiseBuf;
+  src1.loop = true;
+  const lp1 = c.createBiquadFilter();
+  lp1.type = "lowpass";
+  lp1.frequency.setValueAtTime(500, c.currentTime);
+  lp1.Q.setValueAtTime(0.8, c.currentTime);
+  const g1 = c.createGain();
+  g1.gain.setValueAtTime(0.6, c.currentTime);
+  src1.connect(lp1).connect(g1).connect(masterGain);
+  src1.start();
+
+  const src2 = c.createBufferSource();
+  src2.buffer = noiseBuf;
+  src2.loop = true;
+  const bp = c.createBiquadFilter();
+  bp.type = "bandpass";
+  bp.frequency.setValueAtTime(1200, c.currentTime);
+  bp.Q.setValueAtTime(2, c.currentTime);
+  const g2 = c.createGain();
+  g2.gain.setValueAtTime(0.12, c.currentTime);
+  src2.connect(bp).connect(g2).connect(masterGain);
+  src2.start();
+
+  // 빠른 파도 wash (4초 주기)
+  const lfo = c.createOscillator();
+  lfo.type = "sine";
+  lfo.frequency.setValueAtTime(0.25, c.currentTime);
+  const lfoG = c.createGain();
+  lfoG.gain.setValueAtTime(300, c.currentTime);
+  lfo.connect(lfoG).connect(lp1.frequency);
+  lfo.start();
+
+  activeSources.push(src1, src2);
+  activeGains.push(g1, g2);
+  activeLfos.push(lfo);
 }
 
 export function stopAll() {
-  if (!activeNodes || !ctx) return;
-  const c = ctx;
-  const nodes = activeNodes;
-  activeNodes = null;
-
-  try {
-    nodes.master.gain.cancelScheduledValues(c.currentTime);
-    nodes.master.gain.setValueAtTime(nodes.master.gain.value, c.currentTime);
-    nodes.master.gain.linearRampToValueAtTime(0, c.currentTime + 0.8);
-  } catch {}
-
+  if (masterGain && ctx) {
+    try {
+      masterGain.gain.cancelScheduledValues(ctx.currentTime);
+      masterGain.gain.setValueAtTime(masterGain.gain.value, ctx.currentTime);
+      masterGain.gain.linearRampToValueAtTime(0, ctx.currentTime + 1);
+    } catch {}
+  }
+  const srcs = [...activeSources];
+  const lfos = [...activeLfos];
+  const mg = masterGain;
+  activeSources = [];
+  activeGains = [];
+  activeLfos = [];
+  masterGain = null;
   setTimeout(() => {
-    nodes.oscs.forEach((o) => { try { o.stop(); } catch {} });
-    try { nodes.master.disconnect(); } catch {}
-  }, 1000);
+    srcs.forEach((s) => { try { s.stop(); } catch {} });
+    lfos.forEach((l) => { try { l.stop(); } catch {} });
+    if (mg) try { mg.disconnect(); } catch {}
+  }, 1200);
 }

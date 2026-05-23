@@ -37,7 +37,10 @@ const clearTextEl = document.getElementById("clearText")!;
 const immersionHud = document.getElementById("immersionHud") as HTMLElement;
 const immersionTimerEl = document.getElementById("immersionTimer")!;
 const immersionBonusEl = document.getElementById("immersionBonus")!;
+const hudBrand = document.getElementById("hudBrand") as HTMLElement;
 const btnStop = document.getElementById("btnStop") as HTMLElement;
+const remainingHud = document.getElementById("remainingHud") as HTMLElement;
+const remainingCountEl = document.getElementById("remainingCount")!;
 const monthInfo = document.getElementById("monthInfo") as HTMLElement;
 const monthInfoText = document.getElementById("monthInfoText")!;
 const resultEl = document.getElementById("result")!;
@@ -62,7 +65,18 @@ const pmrem = new THREE.PMREMGenerator(renderer);
 scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
-camera.position.set(0, 0, 12);
+
+// 카메라를 그리드에 맞춰서 모든 버블이 화면 안에 보이게
+function fitCamera() {
+  const gridW = (COLS - 1) * GAP + GAP; // 허니콤 오프셋 포함
+  const gridH = (ROWS - 1) * GAP;
+  const vFov = (camera.fov * Math.PI) / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const zForH = (gridH / 2 + 1.5) / Math.tan(vFov / 2);
+  const zForW = (gridW / 2 + 1.5) / Math.tan(hFov / 2);
+  camera.position.z = Math.max(zForH, zForW);
+}
+fitCamera();
 
 scene.add(new THREE.AmbientLight(0xa8c0ff, 0.35));
 const keyLight = new THREE.DirectionalLight(0xe0d4ff, 0.9);
@@ -163,6 +177,7 @@ function buildGrid(mask: PatternMask = fullMask()) {
     }
   }
   gridStartTime = performance.now();
+  if (remainingHud) updateRemaining();
 }
 
 // ---------- 3. 도파민 폭발 시스템 ----------
@@ -258,6 +273,11 @@ function bumpCombo() {
   comboHideTimer = window.setTimeout(() => { comboEl.setAttribute("data-show", "false"); comboCount = 0; }, COMBO_WINDOW + 200);
 }
 
+function updateRemaining() {
+  const left = bubbles.filter((b) => !b.popped).length;
+  remainingCountEl.textContent = String(left);
+}
+
 function showToast(el: HTMLElement, textEl: HTMLElement, msg: string, ms = 1400) {
   textEl.textContent = msg;
   el.setAttribute("data-show", "true");
@@ -289,6 +309,7 @@ function tryPopAt(clientX: number, clientY: number) {
   sessionCount += 1;
   addPops(1);
   refreshCounters();
+  updateRemaining();
 
   const ms = checkMilestone();
   if (ms) showToast(praiseToastEl, praiseTextEl, milestonePraise(ms), 2200);
@@ -352,7 +373,9 @@ function startMode(m: Mode) {
   hero.classList.add("is-hidden");
   resultEl.setAttribute("data-show", "false");
   resultEl.setAttribute("hidden", "");
+  hudBrand.setAttribute("hidden", "");
   btnStop.removeAttribute("hidden");
+  remainingHud.removeAttribute("hidden");
   monthInfo.setAttribute("hidden", "");
   refreshCounters();
 
@@ -377,7 +400,9 @@ function startMode(m: Mode) {
 function endSession() {
   playing = false;
   btnStop.setAttribute("hidden", "");
+  hudBrand.removeAttribute("hidden");
   immersionHud.setAttribute("hidden", "");
+  remainingHud.setAttribute("hidden", "");
   stopMusic();
 
   const elapsed = performance.now() - sessionStartTime;
@@ -404,7 +429,7 @@ function endSession() {
   resultPraise.textContent = praise;
   resultSummary.textContent = summary;
 
-  if (mode === "meditation") btnOther.textContent = "몰입 모드 해보기";
+  if (mode === "meditation") btnOther.textContent = "몰입 모드 하러 가기";
   else if (mode === "immersion") btnOther.textContent = "명상 모드로 쉬기";
   else btnOther.textContent = "명상 모드 해보기";
 
@@ -452,6 +477,7 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  fitCamera();
 });
 
 // ---------- 8. 애니메이션 루프 ----------

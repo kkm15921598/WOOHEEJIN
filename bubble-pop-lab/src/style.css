@@ -74,6 +74,7 @@ body {
   border-radius: 999px;
   box-shadow: var(--shadow-glass);
 }
+.hud__brand[hidden] { display: none; }
 
 .hud__counters {
   display: flex;
@@ -117,27 +118,48 @@ body {
   color: var(--text-muted);
 }
 
-/* ---------- 그만하기 버튼 (우상단 구석 — 실수 방지) ---------- */
-.stop-btn {
-  position: absolute;
-  top: calc(env(safe-area-inset-top, 0) + 68px);
-  right: 16px;
+/* ---------- 그만하기 (HUD 바 안에 통합 — 뽁뽁이와 절대 안 겹침) ---------- */
+.hud__stop {
   font-family: inherit;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 700;
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.5);
+  background: var(--glass);
   backdrop-filter: blur(20px);
   -webkit-backdrop-filter: blur(20px);
   border: 1px solid rgba(90, 111, 255, 0.12);
-  padding: 6px 14px;
+  padding: 7px 14px;
   border-radius: 999px;
   cursor: pointer;
-  z-index: 15;
+  pointer-events: auto;
   transition: transform 200ms var(--ease-soft);
 }
-.stop-btn[hidden] { display: none; }
-.stop-btn:active { transform: scale(0.94); }
+.hud__stop[hidden] { display: none; }
+.hud__stop:active { transform: scale(0.94); }
+
+/* 남은 개수 */
+.remaining-hud {
+  position: absolute;
+  bottom: calc(env(safe-area-inset-bottom, 0) + 64px);
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+  background: rgba(255,255,255,0.6);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  padding: 6px 16px;
+  border-radius: 999px;
+  z-index: 8;
+  pointer-events: none;
+}
+.remaining-hud[hidden] { display: none; }
+.remaining-hud__count {
+  font-weight: 800;
+  color: var(--emphasis);
+  font-variant-numeric: tabular-nums;
+}
 
 /* ---------- 몰입 모드 HUD ---------- */
 .immersion-hud {

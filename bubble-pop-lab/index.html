@@ -18,7 +18,8 @@
 
       <header class="hud">
         <div class="hud__left">
-          <div class="hud__brand">오늘뽁</div>
+          <div id="hudBrand" class="hud__brand">오늘뽁</div>
+          <button id="btnStop" class="hud__stop" hidden>← 그만하기</button>
         </div>
         <div class="hud__counters">
           <div class="hud__counter">
@@ -34,8 +35,10 @@
         </div>
       </header>
 
-      <!-- 그만하기 (우상단 구석, 모든 모드 공통) -->
-      <button id="btnStop" class="stop-btn" hidden>그만하기</button>
+      <!-- 남은 개수 (하단) -->
+      <div id="remainingHud" class="remaining-hud" hidden>
+        <span>남은 </span><span id="remainingCount" class="remaining-hud__count">0</span><span>개</span>
+      </div>
 
       <!-- 몰입 모드 타이머 (하단) -->
       <div id="immersionHud" class="immersion-hud" hidden>
@@ -90,8 +93,6 @@
 
         <footer class="hero__footer">
           <a href="/privacy.html">개인정보처리방침</a>
-          <span aria-hidden="true">·</span>
-          <a href="/terms.html">이용약관</a>
         </footer>
       </section>
 
@@ -105,7 +106,7 @@
           <div class="result__actions">
             <button id="btnReplay" class="result__btn result__btn--primary">한 번 더</button>
             <button id="btnShare" class="result__btn">공유하기</button>
-            <button id="btnOther" class="result__btn result__btn--ghost">다른 모드 해보기</button>
+            <button id="btnOther" class="result__btn result__btn--ghost" data-med="몰입 모드 하러 가기" data-imm="명상 모드로 쉬기" data-day="명상 모드 해보기">몰입 모드 하러 가기</button>
             <button id="btnHome" class="result__btn result__btn--ghost">홈으로</button>
           </div>
         </div>
