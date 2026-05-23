@@ -14,7 +14,7 @@ import {
   IMMERSION_START_MS,
   IMMERSION_BONUS_MS,
 } from "./modes";
-import { COLS, ROWS, type PatternMask, fullMask, textToMask } from "./patterns";
+import { COLS, ROWS } from "./patterns";
 import { buildShareCard, shareOrDownload } from "./share";
 
 // ---------- DOM ----------
@@ -31,7 +31,6 @@ const stressTextField = document.getElementById("stressText") as HTMLInputElemen
 const btnStressGo = document.getElementById("btnStressGo")!;
 const btnStressBack = document.getElementById("btnStressBack")!;
 const stressLabelEl = document.getElementById("stressLabel") as HTMLElement;
-const stressLabelText = document.getElementById("stressLabelText")!;
 const comboEl = document.getElementById("combo")!;
 const comboValueEl = document.getElementById("comboValue")!;
 const praiseToastEl = document.getElementById("praiseToast")!;
@@ -159,57 +158,137 @@ function makeBubbleMaterial(isRare: boolean) {
   return { mat, palette };
 }
 
-// 레벨별 버블 크기 (1=큰, 10=작은)
+// ---------- 레벨 시스템 ----------
 function levelScale(): number {
   return Math.max(0.45, 1.4 - (level - 1) * 0.1);
 }
-
-// 레벨별 버블 개수 (1=12개, 10=54개)
-function levelMask(): PatternMask {
-  const total = COLS * ROWS;
-  const target = Math.round(12 + (level - 1) * (total - 12) / 9);
-  const mask = fullMask();
-  const indices = Array.from({ length: total }, (_, i) => i);
-  for (let i = indices.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [indices[i], indices[j]] = [indices[j], indices[i]];
-  }
-  const toRemove = total - target;
-  for (let i = 0; i < toRemove; i++) mask[indices[i]] = false;
-  return mask;
+function levelCount(): number {
+  return Math.round(9 + (level - 1) * (COLS * ROWS - 9) / 9);
 }
-
 function updateLevelHud() {
   levelNumEl.textContent = String(level);
 }
 
-function buildGrid(mask: PatternMask = fullMask()) {
+function clearBubbles() {
   for (const b of bubbles) scene.remove(b.mesh);
   bubbles.length = 0;
-  const offsetX = -((COLS - 1) * GAP) / 2;
-  const offsetY = -((ROWS - 1) * GAP) / 2;
+}
+
+// ---- 명상: 격자 (수직수평, 가만히) ----
+function buildMeditationGrid() {
+  clearBubbles();
+  const count = levelCount();
   const ls = levelScale();
-  for (let r = 0; r < ROWS; r++) {
-    for (let c = 0; c < COLS; c++) {
-      const i = r * COLS + c;
-      if (!mask[i]) continue;
-      const isRare = Math.random() < 0.08;
+  const cols = Math.min(COLS, Math.ceil(Math.sqrt(count * 1.2)));
+  const rows = Math.ceil(count / cols);
+  const gap = GAP * (ls > 1 ? 1.2 : 1);
+  const offsetX = -((cols - 1) * gap) / 2;
+  const offsetY = -((rows - 1) * gap) / 2;
+  let placed = 0;
+  for (let r = 0; r < rows && placed < count; r++) {
+    for (let c = 0; c < cols && placed < count; c++) {
+      const isRare = Math.random() < 0.06;
       const { mat, palette } = makeBubbleMaterial(isRare);
       const mesh = new THREE.Mesh(bubbleGeo, mat);
-      const x = offsetX + c * GAP + (r % 2 === 0 ? 0 : GAP * 0.5);
-      const y = offsetY + r * GAP;
-      mesh.position.set(x, y, 0);
-      mesh.scale.setScalar(((isRare ? 1.1 : 0.92) + Math.random() * 0.12) * ls);
+      mesh.position.set(offsetX + c * gap, offsetY + r * gap, 0);
+      mesh.scale.setScalar(((isRare ? 1.1 : 0.95) + Math.random() * 0.08) * ls);
       scene.add(mesh);
       bubbles.push({
         mesh, popped: false, basePos: mesh.position.clone(),
         color: palette.color, emissive: palette.emissive,
         floatPhase: Math.random() * Math.PI * 2, rare: isRare,
       });
+      placed++;
     }
   }
   gridStartTime = performance.now();
-  if (gameInfoHud) updateRemaining();
+  updateRemaining();
+}
+
+// ---- 몰입: 자유 배치 (랜덤, 움직임) ----
+function buildImmersionGrid() {
+  clearBubbles();
+  const count = levelCount();
+  const ls = levelScale();
+  const spread = 5 + level * 0.5;
+  for (let i = 0; i < count; i++) {
+    const isRare = Math.random() < 0.08;
+    const { mat, palette } = makeBubbleMaterial(isRare);
+    const mesh = new THREE.Mesh(bubbleGeo, mat);
+    mesh.position.set(
+      (Math.random() - 0.5) * spread * 2,
+      (Math.random() - 0.5) * spread * 2.5,
+      (Math.random() - 0.5) * 1.5,
+    );
+    mesh.scale.setScalar(((isRare ? 1.1 : 0.9) + Math.random() * 0.15) * ls);
+    scene.add(mesh);
+    bubbles.push({
+      mesh, popped: false, basePos: mesh.position.clone(),
+      color: palette.color, emissive: palette.emissive,
+      floatPhase: Math.random() * Math.PI * 2, rare: isRare,
+    });
+  }
+  gridStartTime = performance.now();
+  updateRemaining();
+}
+
+// ---- 스트레스: 글자별 큰 버블 (2안) ----
+function makeTextTexture(char: string): THREE.CanvasTexture {
+  const size = 512;
+  const cv = document.createElement("canvas");
+  cv.width = size; cv.height = size;
+  const cx = cv.getContext("2d")!;
+  cx.clearRect(0, 0, size, size);
+  cx.fillStyle = "rgba(255,255,255,0.95)";
+  cx.font = `900 ${size * 0.45}px "Pretendard Variable", "Apple SD Gothic Neo", sans-serif`;
+  cx.textAlign = "center";
+  cx.textBaseline = "middle";
+  cx.fillText(char, size / 2, size / 2);
+  const tex = new THREE.CanvasTexture(cv);
+  tex.needsUpdate = true;
+  return tex;
+}
+
+function buildStressBubbles(text: string) {
+  clearBubbles();
+  const chars = [...text];
+  const count = chars.length;
+  const spacing = 2.8;
+  const startX = -(count - 1) * spacing / 2;
+
+  chars.forEach((char, i) => {
+    const texture = makeTextTexture(char);
+    const palette = MYSTIC_PALETTE[i % MYSTIC_PALETTE.length];
+    const mat = new THREE.MeshPhysicalMaterial({
+      color: palette.color,
+      emissive: palette.emissive,
+      emissiveIntensity: 0.4,
+      metalness: 0,
+      roughness: 0.12,
+      transmission: 0,
+      clearcoat: 1.0,
+      clearcoatRoughness: 0.05,
+      iridescence: 0.8,
+      iridescenceIOR: 1.45,
+      sheen: 1.0,
+      sheenRoughness: 0.3,
+      sheenColor: new THREE.Color(palette.color),
+      map: texture,
+      transparent: true,
+      opacity: 0.95,
+    });
+    const mesh = new THREE.Mesh(bubbleGeo, mat);
+    mesh.position.set(startX + i * spacing, 0, 0);
+    mesh.scale.setScalar(1.8);
+    scene.add(mesh);
+    bubbles.push({
+      mesh, popped: false, basePos: mesh.position.clone(),
+      color: palette.color, emissive: palette.emissive,
+      floatPhase: Math.random() * Math.PI * 2, rare: false,
+    });
+  });
+  gridStartTime = performance.now();
+  updateRemaining();
 }
 
 // 히어로용 데코 버블 (대중소 랜덤 배치)
@@ -408,9 +487,10 @@ function tryPopAt(clientX: number, clientY: number) {
         immersionBonusEl.textContent = `+${IMMERSION_BONUS_MS / 1000}`;
         immersionBonusEl.setAttribute("data-show", "true");
         setTimeout(() => immersionBonusEl.setAttribute("data-show", "false"), 800);
+        setTimeout(() => buildImmersionGrid(), 600);
+      } else {
+        setTimeout(() => buildMeditationGrid(), 600);
       }
-      // 명상·몰입: 자동으로 새 그리드 재생성
-      setTimeout(() => buildGrid(levelMask()), 600);
     }
   }
 }
@@ -453,22 +533,20 @@ function startMode(m: Mode) {
 
   updateLevelHud();
 
+  stressLabelEl.setAttribute("hidden", "");
+
   if (m === "immersion") {
     immersionRemaining = IMMERSION_START_MS;
     immersionLastTick = performance.now();
     immersionHud.removeAttribute("hidden");
     immersionTimerEl.textContent = formatTime(IMMERSION_START_MS);
-    stressLabelEl.setAttribute("hidden", "");
-    buildGrid(levelMask());
+    buildImmersionGrid();
   } else if (m === "stress") {
     immersionHud.setAttribute("hidden", "");
-    stressLabelEl.removeAttribute("hidden");
-    stressLabelText.textContent = stressName;
-    buildGrid(textToMask(stressName));
+    buildStressBubbles(stressName);
   } else {
     immersionHud.setAttribute("hidden", "");
-    stressLabelEl.setAttribute("hidden", "");
-    buildGrid(levelMask());
+    buildMeditationGrid();
   }
 }
 
@@ -616,19 +694,21 @@ const clock = new THREE.Clock();
 function tick() {
   const t = clock.getElapsedTime();
 
-  // 레벨 + 모드에 따른 움직임 (몰입은 레벨 올라갈수록 더 활발)
-  const isImmersion = mode === "immersion" && playing;
-  const levelMult = isImmersion ? 1 + (level - 1) * 0.15 : 1;
-  const floatAmp = (isImmersion ? 0.14 : 0.08) * levelMult;
-  const floatSpeed = (isImmersion ? 2.0 : 1.2) * levelMult;
-  const driftAmp = (isImmersion ? 0.08 : 0.04) * levelMult;
-  const driftSpeed = (isImmersion ? 1.4 : 0.8) * levelMult;
-
+  // 모드별 버블 움직임
   for (const b of bubbles) {
     if (b.popped) continue;
-    b.mesh.position.y = b.basePos.y + Math.sin(t * floatSpeed + b.floatPhase) * floatAmp;
-    b.mesh.position.x = b.basePos.x + Math.cos(t * driftSpeed + b.floatPhase) * driftAmp;
-    b.mesh.rotation.y = t * 0.2 + b.floatPhase;
+    if (mode === "immersion" && playing) {
+      // 몰입: 자유롭게 떠다님, 레벨↑ = 더 심하게
+      const mult = 1 + (level - 1) * 0.18;
+      b.mesh.position.y = b.basePos.y + Math.sin(t * 1.8 * mult + b.floatPhase) * 0.15 * mult;
+      b.mesh.position.x = b.basePos.x + Math.cos(t * 1.3 * mult + b.floatPhase) * 0.12 * mult;
+      b.mesh.position.z = b.basePos.z + Math.sin(t * 0.9 * mult + b.floatPhase * 2) * 0.08 * mult;
+    } else if (mode === "stress") {
+      // 스트레스: 살짝만 흔들림
+      b.mesh.position.y = b.basePos.y + Math.sin(t * 0.8 + b.floatPhase) * 0.04;
+    }
+    // 명상: 가만히 (basePos 그대로)
+    b.mesh.rotation.y = t * 0.15 + b.floatPhase;
   }
 
   for (let i = flashes.length - 1; i >= 0; i--) {
