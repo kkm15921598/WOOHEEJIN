@@ -49,6 +49,8 @@ const monthInfo = document.getElementById("monthInfo") as HTMLElement;
 const monthInfoText = document.getElementById("monthInfoText")!;
 const resultEl = document.getElementById("result")!;
 const resultTitle = document.getElementById("resultTitle")!;
+const resultStressWord = document.getElementById("resultStressWord") as HTMLElement;
+const resultCountWrap = document.getElementById("resultCountWrap") as HTMLElement;
 const resultCount = document.getElementById("resultCount")!;
 const resultPraise = document.getElementById("resultPraise")!;
 const resultSummary = document.getElementById("resultSummary")!;
@@ -233,17 +235,45 @@ function buildImmersionGrid() {
 }
 
 // ---- 스트레스: 글자별 큰 버블 (2안) ----
-function makeTextTexture(char: string): THREE.CanvasTexture {
+const STRESS_COLORS = [
+  { bg: "#FF6B8A", text: "#FFFFFF" },
+  { bg: "#7C6BFF", text: "#FFFFFF" },
+  { bg: "#FF8C42", text: "#FFFFFF" },
+  { bg: "#4ECDC4", text: "#FFFFFF" },
+  { bg: "#FF5E78", text: "#FFFFFF" },
+  { bg: "#A78BFA", text: "#FFFFFF" },
+];
+
+function makeTextTexture(char: string, bgColor: string, textColor: string): THREE.CanvasTexture {
   const size = 512;
   const cv = document.createElement("canvas");
   cv.width = size; cv.height = size;
   const cx = cv.getContext("2d")!;
+
+  // 원형 배경
   cx.clearRect(0, 0, size, size);
-  cx.fillStyle = "rgba(255,255,255,0.95)";
-  cx.font = `900 ${size * 0.45}px "Pretendard Variable", "Apple SD Gothic Neo", sans-serif`;
+  cx.fillStyle = bgColor;
+  cx.beginPath();
+  cx.arc(size / 2, size / 2, size * 0.46, 0, Math.PI * 2);
+  cx.fill();
+
+  // 테두리 하이라이트
+  cx.strokeStyle = "rgba(255,255,255,0.4)";
+  cx.lineWidth = 6;
+  cx.beginPath();
+  cx.arc(size / 2, size / 2, size * 0.43, 0, Math.PI * 2);
+  cx.stroke();
+
+  // 글자 (굵고 크게)
+  cx.fillStyle = textColor;
+  cx.font = `900 ${size * 0.48}px sans-serif`;
   cx.textAlign = "center";
   cx.textBaseline = "middle";
-  cx.fillText(char, size / 2, size / 2);
+  cx.shadowColor = "rgba(0,0,0,0.25)";
+  cx.shadowBlur = 12;
+  cx.shadowOffsetY = 4;
+  cx.fillText(char, size / 2, size / 2 + 4);
+
   const tex = new THREE.CanvasTexture(cv);
   tex.needsUpdate = true;
   return tex;
@@ -253,37 +283,29 @@ function buildStressBubbles(text: string) {
   clearBubbles();
   const chars = [...text];
   const count = chars.length;
-  const spacing = 2.8;
+  const bubbleSize = Math.max(1.5, 2.5 - count * 0.12);
+  const spacing = bubbleSize * 1.6;
   const startX = -(count - 1) * spacing / 2;
 
   chars.forEach((char, i) => {
-    const texture = makeTextTexture(char);
-    const palette = MYSTIC_PALETTE[i % MYSTIC_PALETTE.length];
-    const mat = new THREE.MeshPhysicalMaterial({
-      color: palette.color,
-      emissive: palette.emissive,
-      emissiveIntensity: 0.4,
-      metalness: 0,
-      roughness: 0.12,
-      transmission: 0,
-      clearcoat: 1.0,
-      clearcoatRoughness: 0.05,
-      iridescence: 0.8,
-      iridescenceIOR: 1.45,
-      sheen: 1.0,
-      sheenRoughness: 0.3,
-      sheenColor: new THREE.Color(palette.color),
+    const sc = STRESS_COLORS[i % STRESS_COLORS.length];
+    const texture = makeTextTexture(char, sc.bg, sc.text);
+    const color = new THREE.Color(sc.bg);
+    const mat = new THREE.MeshStandardMaterial({
       map: texture,
-      transparent: true,
-      opacity: 0.95,
+      color: 0xffffff,
+      emissive: color,
+      emissiveIntensity: 0.15,
+      metalness: 0.05,
+      roughness: 0.3,
     });
     const mesh = new THREE.Mesh(bubbleGeo, mat);
     mesh.position.set(startX + i * spacing, 0, 0);
-    mesh.scale.setScalar(1.8);
+    mesh.scale.setScalar(bubbleSize);
     scene.add(mesh);
     bubbles.push({
       mesh, popped: false, basePos: mesh.position.clone(),
-      color: palette.color, emissive: palette.emissive,
+      color: color.getHex(), emissive: color.getHex(),
       floatPhase: Math.random() * Math.PI * 2, rare: false,
     });
   });
@@ -565,17 +587,24 @@ function endSession() {
   stressLabelEl.setAttribute("hidden", "");
 
   if (mode === "stress") {
-    title = `"${stressName}" 다 뿌셨어요!`;
+    title = "다 뿌셨어요!";
     praise = stressPraise(stressName);
     summary = `${Math.floor(elapsed / 1000)}초 만에 부숨`;
-  } else if (mode === "immersion") {
-    title = `${formatElapsed(elapsed)} 동안 몰입!`;
-    praise = pickResultPraise();
-    summary = `레벨 ${level} · 그리드 ${gridClears}번 클리어`;
+    resultStressWord.textContent = `"${stressName}"`;
+    resultStressWord.removeAttribute("hidden");
+    resultCountWrap.setAttribute("hidden", "");
   } else {
-    title = "시원하게 비웠어요";
-    praise = pickResultPraise();
-    summary = `레벨 ${level} · ${formatElapsed(elapsed)} 동안 뽁뽁`;
+    resultStressWord.setAttribute("hidden", "");
+    resultCountWrap.removeAttribute("hidden");
+    if (mode === "immersion") {
+      title = `${formatElapsed(elapsed)} 동안 몰입!`;
+      praise = pickResultPraise();
+      summary = `레벨 ${level} · 그리드 ${gridClears}번 클리어`;
+    } else {
+      title = "시원하게 비웠어요";
+      praise = pickResultPraise();
+      summary = `레벨 ${level} · ${formatElapsed(elapsed)} 동안 뽁뽁`;
+    }
   }
 
   resultTitle.textContent = title;

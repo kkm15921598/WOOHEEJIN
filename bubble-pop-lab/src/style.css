@@ -453,6 +453,13 @@ body {
   font-size: 16px; font-weight: 700; color: var(--text-muted);
   margin-bottom: 8px; letter-spacing: -0.3px;
 }
+.result__stress-word {
+  font-size: 48px; font-weight: 900; letter-spacing: -2px; line-height: 1.1;
+  background: linear-gradient(135deg, #FF5A8A, #FFB456);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+  margin-bottom: 4px;
+}
+.result__stress-word[hidden] { display: none; }
 .result__count {
   font-size: 80px; font-weight: 900; letter-spacing: -3px; line-height: 1;
   background: linear-gradient(135deg, var(--emphasis), var(--accent-2));
