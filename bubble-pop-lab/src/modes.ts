@@ -133,3 +133,32 @@ export function currentMonthLabel(): string {
   const d = new Date();
   return `${d.getMonth() + 1}월`;
 }
+
+export function levelUpPraise(level: number, mode: Mode): string {
+  if (mode === "meditation") {
+    const msgs: Record<number, string> = {
+      2: "좋아요, 워밍업 끝!",
+      3: "호흡이 차분해지고 있어요",
+      4: "리듬을 찾았네요",
+      5: "손끝에 집중되고 있어요",
+      6: "마음이 고요해져요",
+      7: "점점 깊어지는 몰입",
+      8: "거의 선승 수준이에요",
+      9: "뽁뽁 명상 마스터!",
+      10: "경지에 도달했어요",
+    };
+    return msgs[level] ?? `Lv.${level} 돌입!`;
+  }
+  const msgs: Record<number, string> = {
+    2: "시작이 좋아요!",
+    3: "속도가 붙기 시작!",
+    4: "시원하게 밀어붙이는 중!",
+    5: "폭풍 터뜨리기 돌입!",
+    6: "멈출 수 없는 손가락!",
+    7: "뽁뽁 폭주 모드!",
+    8: "스피드 마스터 등극!",
+    9: "역대급 몰입이에요!",
+    10: "전설의 뽁뽁러!",
+  };
+  return msgs[level] ?? `Lv.${level} 돌입!`;
+}

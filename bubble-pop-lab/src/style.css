@@ -426,6 +426,15 @@ body {
   50% { transform: translate(-50%,-50%) scale(1.6); opacity: 0.7; color: #FFD700; }
   100% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
 }
+.stress-char.is-final-pop {
+  animation: charMegaExplode 450ms ease-out forwards;
+}
+@keyframes charMegaExplode {
+  0% { transform: translate(-50%,-50%) scale(1); opacity: 1; }
+  25% { transform: translate(-50%,-50%) scale(2.8); opacity: 1; color: #FFD700; text-shadow: 0 0 40px #FFD700, 0 0 80px #FF5A8A, 0 0 120px #FFD700; }
+  50% { transform: translate(-50%,-50%) scale(3.2); opacity: 0.8; color: #fff; text-shadow: 0 0 60px #fff, 0 0 100px #FFD700; }
+  100% { transform: translate(-50%,-50%) scale(0); opacity: 0; }
+}
 
 .stress-label[hidden] { display: none; }
 .mode-card__name { font-size: 17px; font-weight: 800; color: var(--text); letter-spacing: -0.3px; }

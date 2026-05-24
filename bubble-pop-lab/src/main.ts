@@ -6,11 +6,11 @@ import {
   getMonthCount,
   addPops,
   checkMilestone,
-  clearPraise,
   milestonePraise,
   pickResultPraise,
   stressPraise,
   currentMonthLabel,
+  levelUpPraise,
   IMMERSION_START_MS,
   IMMERSION_BONUS_MS,
 } from "./modes";
@@ -73,15 +73,44 @@ scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
 
 const camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 100);
 
-// 카메라를 그리드에 맞춰서 모든 버블이 화면 안에 보이게
+// 카메라를 그리드에 맞춰서 모든 버블이 화면 안에 보이게 (히어로 화면용)
 function fitCamera() {
-  const gridW = (COLS - 1) * GAP + GAP; // 허니콤 오프셋 포함
+  const gridW = (COLS - 1) * GAP + GAP;
   const gridH = (ROWS - 1) * GAP;
   const vFov = (camera.fov * Math.PI) / 180;
   const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
   const zForH = (gridH / 2 + 1.5) / Math.tan(vFov / 2);
   const zForW = (gridW / 2 + 1.5) / Math.tan(hFov / 2);
   camera.position.z = Math.max(zForH, zForW);
+}
+
+// 현재 버블 배치에 딱 맞게 카메라 줌
+function fitCameraToContent(padding = 1.0) {
+  if (bubbles.length === 0) { fitCamera(); return; }
+  let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+  for (const b of bubbles) {
+    const r = b.mesh.scale.x * 0.55;
+    minX = Math.min(minX, b.basePos.x - r);
+    maxX = Math.max(maxX, b.basePos.x + r);
+    minY = Math.min(minY, b.basePos.y - r);
+    maxY = Math.max(maxY, b.basePos.y + r);
+  }
+  const contentW = maxX - minX;
+  const contentH = maxY - minY;
+  const vFov = (camera.fov * Math.PI) / 180;
+  const hFov = 2 * Math.atan(Math.tan(vFov / 2) * camera.aspect);
+  const zForH = (contentH / 2 + padding) / Math.tan(vFov / 2);
+  const zForW = (contentW / 2 + padding) / Math.tan(hFov / 2);
+  camera.position.z = Math.max(zForH, zForW, 3);
+  camera.position.x = (minX + maxX) / 2;
+  camera.position.y = (minY + maxY) / 2;
+}
+
+function getVisibleBounds() {
+  const vFov = (camera.fov * Math.PI) / 180;
+  const halfH = Math.tan(vFov / 2) * camera.position.z;
+  const halfW = halfH * camera.aspect;
+  return { halfW, halfH };
 }
 
 scene.add(new THREE.AmbientLight(0xa8c0ff, 0.35));
@@ -215,6 +244,7 @@ function buildMeditationGrid() {
   }
   gridStartTime = performance.now();
   updateRemaining();
+  fitCameraToContent(0.6);
 }
 
 // ---- 몰입: 자유 배치 (랜덤, 움직임, 꽉 찬 개수) ----
@@ -223,14 +253,14 @@ function buildImmersionGrid() {
   const { cols, rows } = levelGrid();
   const count = cols * rows;
   const ls = levelScale();
-  const spread = 4 + level * 0.6;
+  const spread = 1.5 + Math.sqrt(count) * 0.7;
   for (let i = 0; i < count; i++) {
     const isRare = Math.random() < 0.08;
     const { mat, palette } = makeBubbleMaterial(isRare);
     const mesh = new THREE.Mesh(bubbleGeo, mat);
     mesh.position.set(
       (Math.random() - 0.5) * spread * 2,
-      (Math.random() - 0.5) * spread * 2.5,
+      (Math.random() - 0.5) * spread * 2,
       (Math.random() - 0.5) * 1.5,
     );
     mesh.scale.setScalar(((isRare ? 1.1 : 0.9) + Math.random() * 0.15) * ls);
@@ -243,6 +273,7 @@ function buildImmersionGrid() {
   }
   gridStartTime = performance.now();
   updateRemaining();
+  fitCameraToContent(1.2);
 }
 
 // ---- 스트레스: 글자별 큰 버블 + HTML 오버레이 글자 ----
@@ -262,40 +293,60 @@ function buildStressBubbles(text: string) {
   clearStressLabels();
   const chars = [...text];
   const count = chars.length;
-  const bubbleSize = Math.max(1.5, 2.8 - count * 0.15);
-  const spacing = bubbleSize * 1.6;
-  const startX = -(count - 1) * spacing / 2;
 
-  chars.forEach((char, i) => {
-    const hexColor = STRESS_COLORS[i % STRESS_COLORS.length];
-    const color = new THREE.Color(hexColor);
-    const { mat } = makeBubbleMaterial(false);
-    mat.color.set(color);
-    mat.emissive.set(color);
-    mat.emissiveIntensity = 0.25;
-    mat.transmission = 0.15;
-    mat.opacity = 0.95;
-    const mesh = new THREE.Mesh(bubbleGeo, mat);
-    mesh.position.set(startX + i * spacing, 0, 0);
-    mesh.scale.setScalar(bubbleSize);
-    scene.add(mesh);
-    bubbles.push({
-      mesh, popped: false, basePos: mesh.position.clone(),
-      color: color.getHex(), emissive: color.getHex(),
-      floatPhase: Math.random() * Math.PI * 2, rare: false,
+  // 5자 이하: 1줄, 6자 이상: 2줄
+  let charRows: string[][];
+  let bubbleSize: number;
+
+  if (count <= 5) {
+    charRows = [chars];
+    bubbleSize = Math.max(1.5, 2.8 - count * 0.2);
+  } else {
+    const row1Len = Math.ceil(count / 2);
+    charRows = [chars.slice(0, row1Len), chars.slice(row1Len)];
+    bubbleSize = Math.max(1.2, 2.4 - count * 0.12);
+  }
+
+  const spacing = bubbleSize * 1.5;
+  const rowGap = bubbleSize * 2.2;
+  let globalIdx = 0;
+
+  charRows.forEach((rowChars, rowIdx) => {
+    const startX = -(rowChars.length - 1) * spacing / 2;
+    const y = (charRows.length - 1) * rowGap / 2 - rowIdx * rowGap;
+
+    rowChars.forEach((char, colIdx) => {
+      const hexColor = STRESS_COLORS[globalIdx % STRESS_COLORS.length];
+      const color = new THREE.Color(hexColor);
+      const { mat } = makeBubbleMaterial(false);
+      mat.color.set(color);
+      mat.emissive.set(color);
+      mat.emissiveIntensity = 0.25;
+      mat.transmission = 0.15;
+      mat.opacity = 0.95;
+      const mesh = new THREE.Mesh(bubbleGeo, mat);
+      mesh.position.set(startX + colIdx * spacing, y, 0);
+      mesh.scale.setScalar(bubbleSize);
+      scene.add(mesh);
+      bubbles.push({
+        mesh, popped: false, basePos: mesh.position.clone(),
+        color: color.getHex(), emissive: color.getHex(),
+        floatPhase: Math.random() * Math.PI * 2, rare: false,
+      });
+
+      const label = document.createElement("div");
+      label.className = "stress-char";
+      label.textContent = char;
+      label.style.color = "#fff";
+      label.dataset.index = String(globalIdx);
+      document.getElementById("app")!.appendChild(label);
+      stressLabels.push(label);
+      globalIdx++;
     });
-
-    // HTML 오버레이 글자 (항상 선명, 정면)
-    const label = document.createElement("div");
-    label.className = "stress-char";
-    label.textContent = char;
-    label.style.color = "#fff";
-    label.dataset.index = String(i);
-    document.getElementById("app")!.appendChild(label);
-    stressLabels.push(label);
   });
   gridStartTime = performance.now();
   updateRemaining();
+  fitCameraToContent(0.8);
 }
 
 function updateStressLabelPositions() {
@@ -394,6 +445,71 @@ function triggerScreenFlash(color: number) {
   requestAnimationFrame(() => { flashOverlay.style.opacity = "0"; });
 }
 
+function spawnMegaExplosion(pos: THREE.Vector3, color: number, emissive: number) {
+  for (let r = 0; r < 3; r++) {
+    const c = r === 0 ? color : (r === 1 ? 0xFFD700 : 0xffffff);
+    const ringMat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+    const ring = new THREE.Mesh(ringGeo, ringMat);
+    ring.position.copy(pos);
+    ring.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
+    scene.add(ring);
+    flashes.push({ mesh: ring, life: 1, maxScale: 8 + r * 4, decay: 0.02 });
+  }
+  for (let i = 0; i < 80; i++) {
+    const geo = shardGeos[i % shardGeos.length];
+    const c = Math.random() < 0.3 ? 0xffffff : (Math.random() < 0.3 ? 0xFFD700 : (Math.random() < 0.5 ? color : emissive));
+    const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
+    const m = new THREE.Mesh(geo, mat);
+    m.position.copy(pos);
+    const ss = 0.8 + Math.random() * 1.2;
+    m.scale.setScalar(ss);
+    scene.add(m);
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.random() * Math.PI;
+    const dir = new THREE.Vector3(Math.sin(phi) * Math.cos(theta), Math.sin(phi) * Math.sin(theta) + 0.3, Math.cos(phi) * 0.5);
+    shards.push({ mesh: m, velocity: dir.multiplyScalar(0.15 + Math.random() * 0.2), life: 1,
+      spin: new THREE.Vector3(Math.random(), Math.random(), Math.random()).multiplyScalar(0.4), startScale: ss });
+  }
+  triggerScreenFlash(0xFFD700);
+  setTimeout(() => triggerScreenFlash(0xFF5A8A), 80);
+}
+
+function shakeScreen(intensity = 10, duration = 400) {
+  const start = performance.now();
+  function shake() {
+    const elapsed = performance.now() - start;
+    if (elapsed > duration) { canvas.style.transform = ""; return; }
+    const progress = 1 - elapsed / duration;
+    const x = (Math.random() - 0.5) * 2 * intensity * progress;
+    const y = (Math.random() - 0.5) * 2 * intensity * progress;
+    canvas.style.transform = `translate(${x}px, ${y}px)`;
+    requestAnimationFrame(shake);
+  }
+  shake();
+}
+
+function popBass(color: number) {
+  if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  const ctx = audioCtx;
+  const o1 = ctx.createOscillator(); const g1 = ctx.createGain();
+  o1.type = "sine"; o1.frequency.value = 80;
+  o1.frequency.exponentialRampToValueAtTime(30, ctx.currentTime + 0.4);
+  o1.connect(g1).connect(ctx.destination);
+  g1.gain.value = 0; g1.gain.linearRampToValueAtTime(0.3, ctx.currentTime + 0.01);
+  g1.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+  o1.start(); o1.stop(ctx.currentTime + 0.6);
+  const o2 = ctx.createOscillator(); const g2 = ctx.createGain();
+  o2.type = "square"; o2.frequency.value = 200;
+  o2.frequency.exponentialRampToValueAtTime(60, ctx.currentTime + 0.3);
+  o2.connect(g2).connect(ctx.destination);
+  g2.gain.value = 0; g2.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.005);
+  g2.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
+  o2.start(); o2.stop(ctx.currentTime + 0.4);
+  pop(color);
+}
+
+function hapticMega() { if (navigator.vibrate) navigator.vibrate([20, 30, 20, 30, 40]); }
+
 // ---------- 4. 사운드 ----------
 let audioCtx: AudioContext | null = null;
 function pop(color: number) {
@@ -464,15 +580,21 @@ function tryPopAt(clientX: number, clientY: number) {
   if (!bubble || bubble.popped) return;
   bubble.popped = true;
   const isStressPop = mode === "stress";
-  spawnExplosion(bubble.mesh.position, bubble.color, bubble.emissive, isStressPop || bubble.rare);
-  pop(bubble.color);
-  hapticPop();
-  // 스트레스 모드: 라벨 폭발 애니메이션
+  const allPopped = bubbles.every(b => b.popped);
+
   if (isStressPop) {
+    spawnMegaExplosion(bubble.mesh.position, bubble.color, bubble.emissive);
+    popBass(bubble.color);
+    hapticMega();
+    shakeScreen(allPopped ? 14 : 8, allPopped ? 500 : 300);
     const idx = bubbles.indexOf(bubble);
     if (idx >= 0 && stressLabels[idx]) {
-      stressLabels[idx].classList.add("is-popped");
+      stressLabels[idx].classList.add("is-final-pop");
     }
+  } else {
+    spawnExplosion(bubble.mesh.position, bubble.color, bubble.emissive, bubble.rare);
+    pop(bubble.color);
+    hapticPop();
   }
   bumpCombo();
   sessionCount += 1;
@@ -494,24 +616,20 @@ function tryPopAt(clientX: number, clientY: number) {
   };
   fade();
 
-  if (bubbles.every((b) => b.popped)) {
+  if (allPopped) {
     gridClears += 1;
-    const gridTime = (performance.now() - gridStartTime) / 1000;
-    showToast(clearToastEl, clearTextEl, clearPraise(gridTime), 1200);
 
     if (mode === "stress") {
-      // 스트레스 단어 폭발 → 사라짐
       stressLabelEl.classList.add("is-exploding");
       setTimeout(() => {
         stressLabelEl.setAttribute("hidden", "");
         stressLabelEl.classList.remove("is-exploding");
         endSession();
-      }, 700);
+      }, 900);
     } else {
-      // 레벨업 (명상·몰입 공통)
       level = Math.min(level + 1, 10);
       updateLevelHud();
-      showToast(praiseToastEl, praiseTextEl, `Lv.${level} 돌입!`, 1200);
+      showToast(clearToastEl, clearTextEl, levelUpPraise(level, mode), 1400);
       if (mode === "immersion") {
         immersionRemaining += IMMERSION_BONUS_MS;
         immersionBonusEl.textContent = `+${IMMERSION_BONUS_MS / 1000}`;
@@ -608,7 +726,7 @@ function endSession() {
     if (mode === "immersion") {
       title = `${formatElapsed(elapsed)} 동안 몰입!`;
       praise = pickResultPraise();
-      summary = `레벨 ${level} · 그리드 ${gridClears}번 클리어`;
+      summary = `레벨 ${level} · ${gridClears}판 클리어`;
     } else {
       title = "시원하게 비웠어요";
       praise = pickResultPraise();
@@ -677,6 +795,8 @@ btnHome.addEventListener("click", () => {
     resultEl.setAttribute("hidden", "");
     for (const b of bubbles) scene.remove(b.mesh);
     bubbles.length = 0;
+    camera.position.set(0, 0, camera.position.z);
+    fitCamera();
     buildDecoBubbles();
     hero.classList.remove("is-hidden");
   }, 300);
@@ -721,7 +841,11 @@ window.addEventListener("resize", () => {
   renderer.setSize(window.innerWidth, window.innerHeight);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
-  fitCamera();
+  if (playing && bubbles.length > 0) {
+    fitCameraToContent(mode === "immersion" ? 1.2 : 0.6);
+  } else {
+    fitCamera();
+  }
 });
 
 // ---------- 8. 애니메이션 루프 ----------
@@ -733,21 +857,23 @@ function tick() {
   const t = clock.getElapsedTime();
 
   // 모드별 버블 움직임
+  const immBounds = (mode === "immersion" && playing) ? getVisibleBounds() : null;
   for (const b of bubbles) {
     if (b.popped) continue;
-    if (mode === "immersion" && playing) {
+    if (mode === "immersion" && playing && immBounds) {
       const mult = 1 + (level - 1) * 0.18;
       b.mesh.position.y = b.basePos.y + Math.sin(t * 1.8 * mult + b.floatPhase) * 0.15 * mult;
       b.mesh.position.x = b.basePos.x + Math.cos(t * 1.3 * mult + b.floatPhase) * 0.12 * mult;
       b.mesh.position.z = b.basePos.z + Math.sin(t * 0.9 * mult + b.floatPhase * 2) * 0.08 * mult;
       b.mesh.rotation.y = t * 0.15 + b.floatPhase;
+      const r = b.mesh.scale.x * 0.55 * 0.5;
+      b.mesh.position.x = Math.max(-immBounds.halfW + r, Math.min(immBounds.halfW - r, b.mesh.position.x));
+      b.mesh.position.y = Math.max(-immBounds.halfH + r, Math.min(immBounds.halfH - r, b.mesh.position.y));
     } else if (mode === "stress") {
-      // 스트레스: 통통 튀기 (회전 없음 → 글자 항상 정면)
       b.mesh.position.y = b.basePos.y + Math.abs(Math.sin(t * 1.5 + b.floatPhase)) * 0.15;
       b.mesh.position.x = b.basePos.x + Math.sin(t * 0.6 + b.floatPhase) * 0.06;
-      b.mesh.rotation.y = 0; // 고정
+      b.mesh.rotation.y = 0;
     } else {
-      // 명상: 가만히
       b.mesh.rotation.y = 0;
     }
   }
@@ -776,7 +902,12 @@ function tick() {
     immersionRemaining -= (now - immersionLastTick);
     immersionLastTick = now;
     immersionTimerEl.textContent = formatTime(immersionRemaining);
-    if (immersionRemaining <= 0) endSession();
+    if (immersionRemaining <= 0) {
+      playing = false;
+      immersionTimerEl.textContent = "0:00";
+      showToast(clearToastEl, clearTextEl, "시간 종료!", 1200);
+      setTimeout(() => endSession(), 800);
+    }
   }
 
   // 스트레스 라벨 위치 동기화
