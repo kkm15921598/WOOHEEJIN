@@ -62,6 +62,25 @@ const btnOther = document.getElementById("btnOther")!;
 const btnHome = document.getElementById("btnHome")!;
 const btnResetLevel = document.getElementById("btnResetLevel") as HTMLElement;
 
+// ---------- 0. Android WebView Force Dark 런타임 차단 ----------
+(function blockForceDark() {
+  const isDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+  if (isDark) {
+    document.documentElement.style.setProperty("color-scheme", "light only", "important");
+    document.documentElement.style.setProperty("background-color", "#E6F9FA", "important");
+    document.documentElement.style.setProperty("color", "#1A1F36", "important");
+    document.body.style.setProperty("background", "linear-gradient(180deg, #E6F9FA 0%, #FFF8FB 100%)", "important");
+    document.body.style.setProperty("color", "#1A1F36", "important");
+  }
+  let meta = document.querySelector('meta[name="color-scheme"]') as HTMLMetaElement | null;
+  if (!meta) {
+    meta = document.createElement("meta");
+    meta.name = "color-scheme";
+    document.head.appendChild(meta);
+  }
+  meta.content = "light only";
+})();
+
 // ---------- 1. 씬 셋업 ----------
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));

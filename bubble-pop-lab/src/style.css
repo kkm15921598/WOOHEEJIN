@@ -23,8 +23,72 @@ html {
   :root, html, body {
     color-scheme: light only !important;
     background-color: #E6F9FA !important;
+    background: linear-gradient(180deg, #E6F9FA 0%, #FFF8FB 100%) !important;
     color: #1A1F36 !important;
   }
+  .hud__brand::before { background: rgba(255,255,255,0.9) !important; }
+  .hud__brand span { color: transparent !important; }
+  .hud__counter { background: rgba(255,255,255,0.9) !important; color: #1A1F36 !important; }
+  .hud__counter-label { color: rgba(26,31,54,0.6) !important; }
+  .hud__counter-value { color: #5A6FFF !important; }
+  .hud__counter-unit { color: rgba(26,31,54,0.6) !important; }
+  .hud__info { background: rgba(26,31,54,0.1) !important; color: rgba(26,31,54,0.4) !important; }
+  .hud__tooltip { background: rgba(26,31,54,0.85) !important; color: #fff !important; }
+  .hud__stop { color: rgba(26,31,54,0.6) !important; background: rgba(255,255,255,0.6) !important; }
+  .game-info-hud { color: rgba(26,31,54,0.6) !important; background: rgba(255,255,255,0.6) !important; }
+  .game-info-hud__level { color: #5A6FFF !important; }
+  .game-info-hud__count { color: #5A6FFF !important; }
+  .immersion-hud__level { color: rgba(26,31,54,0.6) !important; background: rgba(255,255,255,0.6) !important; }
+  .immersion-hud__level-text { color: #5A6FFF !important; }
+  .immersion-hud__remaining { color: #5A6FFF !important; }
+  .immersion-hud__time { background: rgba(255,255,255,0.6) !important; }
+  .immersion-hud__timer { color: #5A6FFF !important; }
+  .immersion-hud__bonus { color: #7AE5E5 !important; }
+  .praise-toast__text, .clear-toast__text {
+    color: #1A1F36 !important;
+    background: rgba(255,255,255,0.85) !important;
+  }
+  .combo__x { color: #FFB7D5 !important; }
+  .combo__label { color: #5A6FFF !important; }
+  .hero {
+    background: radial-gradient(ellipse at center, rgba(255,255,255,0.85) 0%, rgba(255,255,255,0.5) 50%, rgba(255,255,255,0) 80%) !important;
+  }
+  .design-b .hero {
+    background: radial-gradient(ellipse at center top, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0) 65%) !important;
+  }
+  .hero__greeting { color: rgba(26,31,54,0.6) !important; }
+  .hero__stats { background: rgba(255,255,255,0.9) !important; }
+  .hero__stats::after { background: #fff !important; }
+  .hero__stats-desc { color: rgba(26,31,54,0.6) !important; }
+  .hero__stat-label { color: rgba(26,31,54,0.6) !important; }
+  .hero__stat-unit { color: rgba(26,31,54,0.6) !important; }
+  .mode-card { background: rgba(255,255,255,0.9) !important; }
+  .mode-card__name { color: #1A1F36 !important; }
+  .mode-card__desc { color: rgba(26,31,54,0.6) !important; }
+  .mode-card__icon { color: white !important; }
+  .hero__footer, .hero__footer a { color: rgba(26,31,54,0.6) !important; }
+  .stress-input { background: rgba(255,255,255,0.7) !important; }
+  .stress-input__card { background: rgba(255,255,255,0.95) !important; }
+  .stress-input__title { color: #1A1F36 !important; }
+  .stress-input__sub { color: rgba(26,31,54,0.6) !important; }
+  .stress-input__field { background: rgba(255,255,255,0.8) !important; color: #1A1F36 !important; }
+  .stress-input__btn { background: linear-gradient(135deg, #FF5A8A, #FFB456) !important; color: white !important; }
+  .stress-input__back { color: rgba(26,31,54,0.6) !important; }
+  .month-info__text { color: rgba(26,31,54,0.6) !important; background: rgba(255,255,255,0.5) !important; }
+  .result { background: rgba(255,255,255,0.55) !important; }
+  .result__card { background: rgba(255,255,255,0.95) !important; }
+  .result__title { color: rgba(26,31,54,0.6) !important; }
+  .result__praise { color: #1A1F36 !important; }
+  .result__summary { color: rgba(26,31,54,0.6) !important; }
+  .result__btn { background: rgba(255,255,255,0.6) !important; color: #1A1F36 !important; }
+  .result__btn--primary { background: #5A6FFF !important; color: white !important; }
+  .result__btn--ghost { background: transparent !important; color: rgba(26,31,54,0.6) !important; }
+  .privacy-overlay { background: rgba(255,255,255,0.8) !important; }
+  .privacy-overlay__card { background: rgba(255,255,255,0.95) !important; color: #1A1F36 !important; }
+  .privacy-overlay__card h2, .privacy-overlay__card h3 { color: #1A1F36 !important; }
+  .privacy-overlay__card p { color: rgba(26,31,54,0.6) !important; }
+  .privacy-overlay__close { background: rgba(26,31,54,0.06) !important; color: #1A1F36 !important; }
+  canvas { filter: none !important; }
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
