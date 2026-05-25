@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- C안: 진한 그라디언트 + 버블 3개 + 미니멀 -->
+  <defs>
+    <linearGradient id="bgC" x1="0" y1="0" x2="0.5" y2="1">
+      <stop offset="0%" stop-color="#5A6FFF"/>
+      <stop offset="50%" stop-color="#A78BFA"/>
+      <stop offset="100%" stop-color="#FF5A8A"/>
+    </linearGradient>
+    <radialGradient id="b1" cx="0.35" cy="0.3" r="0.5">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.8)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.1)"/>
+    </radialGradient>
+    <radialGradient id="b2" cx="0.35" cy="0.3" r="0.5">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.7)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgC)"/>
+  <!-- 버블 3개 (대중소) -->
+  <circle cx="220" cy="200" r="100" fill="url(#b1)" opacity="0.85"/>
+  <ellipse cx="192" cy="168" rx="30" ry="18" fill="white" opacity="0.45" transform="rotate(-15 192 168)"/>
+  <circle cx="340" cy="170" r="60" fill="url(#b2)" opacity="0.75"/>
+  <ellipse cx="322" cy="150" rx="18" ry="10" fill="white" opacity="0.4" transform="rotate(-15 322 150)"/>
+  <circle cx="310" cy="320" r="45" fill="url(#b2)" opacity="0.7"/>
+  <ellipse cx="296" cy="305" rx="14" ry="8" fill="white" opacity="0.35" transform="rotate(-15 296 305)"/>
+  <!-- 작은 악센트 버블 -->
+  <circle cx="140" cy="350" r="18" fill="white" opacity="0.3"/>
+  <circle cx="400" cy="280" r="12" fill="white" opacity="0.25"/>
+  <circle cx="160" cy="120" r="14" fill="white" opacity="0.2"/>
+  <!-- 뽁 텍스트 하단 -->
+  <text x="256" y="460" text-anchor="middle" font-family="system-ui, sans-serif" font-size="72" font-weight="900" fill="white" opacity="0.95">뽁</text>
+</svg>

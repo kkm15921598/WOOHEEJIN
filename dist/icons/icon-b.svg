@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- B안: 파스텔 배경 + "뽁" 글자 중심 (브랜드형) -->
+  <defs>
+    <linearGradient id="bgB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#E6F9FA"/>
+      <stop offset="50%" stop-color="#F5E6FF"/>
+      <stop offset="100%" stop-color="#FFF0F5"/>
+    </linearGradient>
+    <linearGradient id="textB" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5A6FFF"/>
+      <stop offset="100%" stop-color="#FF5A8A"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bgB)"/>
+  <!-- 데코 버블들 -->
+  <circle cx="100" cy="100" r="45" fill="#7AE5E5" opacity="0.25"/>
+  <circle cx="420" cy="90" r="35" fill="#FFB7D5" opacity="0.3"/>
+  <circle cx="80" cy="380" r="30" fill="#A78BFA" opacity="0.2"/>
+  <circle cx="430" cy="400" r="50" fill="#7AE5E5" opacity="0.2"/>
+  <circle cx="380" cy="250" r="20" fill="#FFB7D5" opacity="0.25"/>
+  <circle cx="130" cy="250" r="25" fill="#FCD34D" opacity="0.2"/>
+  <!-- 뽁 큰 글자 -->
+  <text x="256" y="310" text-anchor="middle" font-family="system-ui, sans-serif" font-size="200" font-weight="900" fill="url(#textB)">뽁</text>
+  <!-- 작은 터짐 이펙트 -->
+  <g stroke="#FF5A8A" stroke-width="4" stroke-linecap="round" opacity="0.5">
+    <line x1="160" y1="140" x2="140" y2="120"/>
+    <line x1="350" y1="140" x2="370" y2="120"/>
+    <line x1="155" y1="165" x2="130" y2="165"/>
+    <line x1="355" y1="165" x2="380" y2="165"/>
+  </g>
+</svg>

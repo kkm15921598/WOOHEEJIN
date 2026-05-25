@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head><title>아이콘 PNG 생성</title></head>
+<body>
+<h2>아이콘 PNG 생성기</h2>
+<p>아래 버튼을 클릭하면 512x512, 192x192 PNG가 다운로드됩니다.</p>
+<button id="btn512">512x512 다운로드</button>
+<button id="btn192">192x192 다운로드</button>
+<br><br>
+<canvas id="c" style="border:1px solid #ccc;"></canvas>
+<script>
+async function renderPNG(size) {
+  const res = await fetch('./icons/icon-b2.svg');
+  const svgText = await res.text();
+  const blob = new Blob([svgText], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const img = new Image();
+  img.onload = () => {
+    const canvas = document.getElementById('c');
+    canvas.width = size;
+    canvas.height = size;
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(img, 0, 0, size, size);
+    const link = document.createElement('a');
+    link.download = 'icon-' + size + '.png';
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+  img.src = url;
+}
+document.getElementById('btn512').onclick = () => renderPNG(512);
+document.getElementById('btn192').onclick = () => renderPNG(192);
+</script>
+</body>
+</html>
