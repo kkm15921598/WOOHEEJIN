@@ -539,7 +539,13 @@ function ensureAudio() {
     audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   }
   if (audioCtx.state === "suspended") audioCtx.resume();
+  const buf = audioCtx.createBuffer(1, 1, 22050);
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+  src.connect(audioCtx.destination);
+  src.start(0);
 }
+document.addEventListener("touchstart", ensureAudio, { once: true });
 document.addEventListener("pointerdown", ensureAudio, { once: true });
 function pop(color: number) {
   if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
