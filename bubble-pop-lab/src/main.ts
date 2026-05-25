@@ -412,15 +412,15 @@ function spawnExplosion(pos: THREE.Vector3, color: number, emissive: number, isR
   const ring = new THREE.Mesh(ringGeo, ringMat);
   ring.position.copy(pos); ring.rotation.x = Math.PI / 2;
   scene.add(ring);
-  flashes.push({ mesh: ring, life: 1, maxScale: isRare ? 6.5 : 4.5, decay: 0.05 });
+  flashes.push({ mesh: ring, life: 1, maxScale: isRare ? 6.5 : 4.5, decay: 0.1 });
   if (isRare) {
     const r2m = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
     const r2 = new THREE.Mesh(ringGeo, r2m);
     r2.position.copy(pos); r2.rotation.x = Math.PI / 2;
     scene.add(r2);
-    flashes.push({ mesh: r2, life: 1, maxScale: 9, decay: 0.04 });
+    flashes.push({ mesh: r2, life: 1, maxScale: 9, decay: 0.08 });
   }
-  const count = isRare ? 50 : 30;
+  const count = isRare ? 30 : 16;
   const boost = isRare ? 1.4 : 1.0;
   for (let i = 0; i < count; i++) {
     const geo = shardGeos[i % shardGeos.length];
@@ -457,9 +457,9 @@ function spawnMegaExplosion(pos: THREE.Vector3, color: number, emissive: number)
     ring.position.copy(pos);
     ring.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, 0);
     scene.add(ring);
-    flashes.push({ mesh: ring, life: 1, maxScale: 8 + r * 4, decay: 0.02 });
+    flashes.push({ mesh: ring, life: 1, maxScale: 8 + r * 4, decay: 0.06 });
   }
-  for (let i = 0; i < 80; i++) {
+  for (let i = 0; i < 40; i++) {
     const geo = shardGeos[i % shardGeos.length];
     const c = Math.random() < 0.3 ? 0xffffff : (Math.random() < 0.3 ? 0xFFD700 : (Math.random() < 0.5 ? color : emissive));
     const mat = new THREE.MeshBasicMaterial({ color: c, transparent: true, opacity: 1, blending: THREE.AdditiveBlending, depthWrite: false });
@@ -1000,7 +1000,7 @@ function tick() {
     s.mesh.position.add(s.velocity);
     s.velocity.multiplyScalar(0.96); s.velocity.y -= 0.004;
     s.mesh.rotation.x += s.spin.x; s.mesh.rotation.y += s.spin.y; s.mesh.rotation.z += s.spin.z;
-    s.life -= 0.018;
+    s.life -= 0.04;
     const pulse = s.life > 0.7 ? s.startScale * (1 + (1 - s.life) * 0.6) : s.startScale * s.life * 1.4;
     s.mesh.scale.setScalar(Math.max(0.01, pulse));
     (s.mesh.material as THREE.MeshBasicMaterial).opacity = Math.max(0, s.life);
