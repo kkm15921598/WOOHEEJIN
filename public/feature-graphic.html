@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Feature Graphic 생성</title>
+<style>body{margin:0;display:flex;flex-direction:column;align-items:center;padding:40px;background:#f5f5f5;font-family:system-ui;}button{margin:20px;padding:12px 24px;font-size:16px;cursor:pointer;border:none;background:#5A6FFF;color:white;border-radius:12px;}canvas{border:1px solid #ccc;}</style>
+</head>
+<body>
+<h2>Feature Graphic 생성 (1024x500)</h2>
+<button id="download">PNG 다운로드</button>
+<canvas id="c" width="1024" height="500"></canvas>
+<script>
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+const W = 1024, H = 500;
+
+// 배경 그라디언트 (보라/핑크)
+const bg = ctx.createLinearGradient(0, 0, W, H);
+bg.addColorStop(0, '#5A6FFF');
+bg.addColorStop(0.5, '#A78BFA');
+bg.addColorStop(1, '#FFB7D5');
+ctx.fillStyle = bg;
+ctx.fillRect(0, 0, W, H);
+
+// 데코 버블들
+function drawBubble(x, y, r, opacity) {
+  const g = ctx.createRadialGradient(x - r*0.25, y - r*0.3, r*0.1, x, y, r);
+  g.addColorStop(0, `rgba(255,255,255,${opacity * 0.9})`);
+  g.addColorStop(0.5, `rgba(255,255,255,${opacity * 0.3})`);
+  g.addColorStop(1, `rgba(255,255,255,${opacity * 0.05})`);
+  ctx.fillStyle = g;
+  ctx.beginPath();
+  ctx.arc(x, y, r, 0, Math.PI * 2);
+  ctx.fill();
+  // 하이라이트
+  ctx.fillStyle = `rgba(255,255,255,${opacity * 0.5})`;
+  ctx.beginPath();
+  ctx.ellipse(x - r*0.25, y - r*0.3, r*0.35, r*0.2, -0.3, 0, Math.PI * 2);
+  ctx.fill();
+}
+
+// 왼쪽 버블들
+drawBubble(80, 100, 60, 0.35);
+drawBubble(160, 350, 45, 0.25);
+drawBubble(50, 280, 30, 0.2);
+drawBubble(200, 180, 25, 0.18);
+
+// 오른쪽 버블들
+drawBubble(900, 120, 55, 0.3);
+drawBubble(970, 320, 40, 0.25);
+drawBubble(830, 400, 35, 0.2);
+drawBubble(780, 80, 20, 0.15);
+
+// 중앙 큰 버블 (아이콘처럼)
+const cx = 320, cy = 250, cr = 130;
+const bubbleG = ctx.createRadialGradient(cx - 30, cy - 40, cr*0.1, cx, cy, cr);
+bubbleG.addColorStop(0, 'rgba(255,255,255,0.95)');
+bubbleG.addColorStop(0.5, 'rgba(224,214,255,0.6)');
+bubbleG.addColorStop(1, 'rgba(196,181,253,0.3)');
+ctx.fillStyle = bubbleG;
+ctx.beginPath();
+ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+ctx.fill();
+// 버블 테두리
+ctx.strokeStyle = 'rgba(255,255,255,0.4)';
+ctx.lineWidth = 2;
+ctx.stroke();
+// 버블 하이라이트
+ctx.fillStyle = 'rgba(255,255,255,0.5)';
+ctx.beginPath();
+ctx.ellipse(cx - 35, cy - 50, 45, 25, -0.3, 0, Math.PI * 2);
+ctx.fill();
+
+// 버블 안 "뽁" 글자
+const txtG = ctx.createLinearGradient(cx - 60, cy - 50, cx + 60, cy + 50);
+txtG.addColorStop(0, '#3A4FDF');
+txtG.addColorStop(1, '#E8408A');
+ctx.fillStyle = txtG;
+ctx.font = '900 140px system-ui, sans-serif';
+ctx.textAlign = 'center';
+ctx.textBaseline = 'middle';
+ctx.fillText('뽁', cx, cy + 5);
+
+// 오른쪽 텍스트
+ctx.fillStyle = 'white';
+ctx.font = '900 72px system-ui, sans-serif';
+ctx.textAlign = 'left';
+ctx.textBaseline = 'middle';
+ctx.fillText('오늘뽁', 520, 210);
+
+// 서브 문구
+ctx.font = '600 28px system-ui, sans-serif';
+ctx.fillStyle = 'rgba(255,255,255,0.85)';
+ctx.fillText('뽁뽁 터뜨려 스트레스 날리기', 525, 300);
+
+// 터짐 이펙트 (뽁 주위)
+ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+ctx.lineWidth = 3;
+ctx.lineCap = 'round';
+const lines = [[190,130,170,105],[450,130,470,105],[175,160,148,155],[455,160,482,155]];
+lines.forEach(([x1,y1,x2,y2]) => {
+  ctx.beginPath();
+  ctx.moveTo(x1,y1);
+  ctx.lineTo(x2,y2);
+  ctx.stroke();
+});
+
+document.getElementById('download').onclick = () => {
+  const link = document.createElement('a');
+  link.download = 'feature-graphic-1024x500.png';
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+};
+</script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#5A6FFF"/>
+      <stop offset="100%" stop-color="#FFB7D5"/>
+    </linearGradient>
+    <linearGradient id="txt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#3A4FDF"/>
+      <stop offset="100%" stop-color="#E8408A"/>
+    </linearGradient>
+    <!-- 3D 버블 메인 그라디언트 -->
+    <radialGradient id="bubbleBase" cx="0.45" cy="0.42" r="0.55">
+      <stop offset="0%" stop-color="#F0EAFF"/>
+      <stop offset="50%" stop-color="#E0D6FF"/>
+      <stop offset="100%" stop-color="#C4B5FD"/>
+    </radialGradient>
+    <!-- 3D 상단 하이라이트 -->
+    <radialGradient id="highlight" cx="0.35" cy="0.25" r="0.35">
+      <stop offset="0%" stop-color="rgba(255,255,255,0.95)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0)"/>
+    </radialGradient>
+    <!-- 3D 하단 그림자/반사 -->
+    <radialGradient id="bottomGlow" cx="0.55" cy="0.75" r="0.3">
+      <stop offset="0%" stop-color="rgba(255,183,213,0.4)"/>
+      <stop offset="100%" stop-color="rgba(255,183,213,0)"/>
+    </radialGradient>
+    <!-- 테두리 광택 -->
+    <radialGradient id="rim" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="85%" stop-color="rgba(255,255,255,0)"/>
+      <stop offset="95%" stop-color="rgba(255,255,255,0.15)"/>
+      <stop offset="100%" stop-color="rgba(255,255,255,0.05)"/>
+    </radialGradient>
+  </defs>
+  <!-- 배경 -->
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- 데코 버블 -->
+  <circle cx="90" cy="95" r="30" fill="white" opacity="0.1"/>
+  <circle cx="425" cy="80" r="22" fill="white" opacity="0.08"/>
+  <circle cx="70" cy="400" r="20" fill="white" opacity="0.07"/>
+  <circle cx="440" cy="420" r="35" fill="white" opacity="0.09"/>
+  <!-- 바닥 그림자 -->
+  <ellipse cx="256" cy="430" rx="120" ry="18" fill="rgba(0,0,0,0.08)"/>
+  <!-- 3D 버블 본체 -->
+  <circle cx="256" cy="256" r="168" fill="url(#bubbleBase)"/>
+  <!-- 하단 핑크 반사 -->
+  <circle cx="256" cy="256" r="168" fill="url(#bottomGlow)"/>
+  <!-- 테두리 광택 -->
+  <circle cx="256" cy="256" r="168" fill="url(#rim)"/>
+  <!-- 상단 하이라이트 (3D 핵심) -->
+  <ellipse cx="215" cy="175" rx="70" ry="45" fill="white" opacity="0.55" transform="rotate(-15 215 175)"/>
+  <ellipse cx="230" cy="190" rx="35" ry="18" fill="white" opacity="0.3" transform="rotate(-15 230 190)"/>
+  <!-- 뽁 -->
+  <text x="256" y="256" text-anchor="middle" dominant-baseline="central" font-family="system-ui, sans-serif" font-size="200" font-weight="900" fill="url(#txt)">뽁</text>
+</svg>
