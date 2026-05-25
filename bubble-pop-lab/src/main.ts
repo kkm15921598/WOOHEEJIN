@@ -893,8 +893,6 @@ btnPrivacyClose.addEventListener("click", () => {
   setTimeout(() => privacyOverlay.setAttribute("hidden", ""), 280);
 });
 
-// 초기 HUD 상태
-hudBrand.removeAttribute("hidden");
 
 // 감성 인사 (A안 전용)
 const heroGreeting = document.getElementById("heroGreeting")!;
@@ -910,15 +908,6 @@ const GREETINGS_F: Record<string, string> = {
   night: "수고했어, 다 터뜨리고 자",
 };
 
-const GREETINGS_T: Record<string, string> = {
-  dawn: "새벽 리프레시, 한 판",
-  earlyMorning: "하루 시작 전 워밍업",
-  morning: "집중력 충전 브레이크",
-  lunch: "점심 후 뇌 리셋",
-  afternoon: "오후 슬럼프 탈출",
-  evening: "하루 마감 정리",
-  night: "머리 비우고 마무리",
-};
 
 function getTimeSlot(): string {
   const h = new Date().getHours();
@@ -931,38 +920,11 @@ function getTimeSlot(): string {
   return "night";
 }
 
-let vibeMode: "F" | "T" = (localStorage.getItem("bp.vibe") as "F" | "T") || "F";
-
 function updateHeroGreeting() {
   const slot = getTimeSlot();
-  const greetings = vibeMode === "F" ? GREETINGS_F : GREETINGS_T;
-  heroGreeting.textContent = greetings[slot];
+  heroGreeting.textContent = GREETINGS_F[slot];
   heroTodayNum.textContent = getTodayCount().toLocaleString();
 }
-const btnVibe = document.getElementById("btnVibe")!;
-const btnVibeInfo = document.getElementById("btnVibeInfo")!;
-const vibeTooltip = document.getElementById("vibeTooltip")!;
-btnVibeInfo.addEventListener("click", () => {
-  vibeTooltip.setAttribute("data-show", "true");
-  setTimeout(() => vibeTooltip.setAttribute("data-show", "false"), 2000);
-});
-function updateVibeButton() {
-  btnVibe.textContent = vibeMode === "F" ? "감성" : "이성";
-  btnVibe.setAttribute("data-vibe", vibeMode);
-}
-updateVibeButton();
-let vibeFirstTap = !localStorage.getItem("bp.vibe.seen");
-btnVibe.addEventListener("click", () => {
-  vibeMode = vibeMode === "F" ? "T" : "F";
-  localStorage.setItem("bp.vibe", vibeMode);
-  updateVibeButton();
-  updateHeroGreeting();
-  if (vibeFirstTap) {
-    showToast(praiseToastEl, praiseTextEl, vibeMode === "T" ? "이성 모드로 전환! 탭해서 바꿀 수 있어요" : "감성 모드로 전환! 탭해서 바꿀 수 있어요", 2000);
-    localStorage.setItem("bp.vibe.seen", "1");
-    vibeFirstTap = false;
-  }
-});
 updateHeroGreeting();
 
 // 초기 표시

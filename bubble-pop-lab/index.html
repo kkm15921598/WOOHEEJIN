@@ -82,18 +82,11 @@
       <!-- 랜딩 히어로 -->
       <section class="hero" id="hero">
         <h1 class="hero__title" hidden>오늘뽁</h1>
-        <p class="hero__subtitle" hidden>오늘의 스트레스, 뽁뽁 터뜨려서 날리기</p>
+        <p class="hero__greeting" id="heroGreeting"></p>
 
-        <!-- 오늘 카운터 + 감성 인사 -->
+        <!-- 오늘 카운터 카드 -->
         <div class="hero__stats" id="heroStats">
-          <div class="hero__greeting-row">
-            <p class="hero__greeting" id="heroGreeting"></p>
-            <div class="hero__vibe-wrap">
-              <button class="hero__vibe-toggle" id="btnVibe">F</button>
-              <button class="hud__info" id="btnVibeInfo" aria-label="정보">i</button>
-              <div class="hud__tooltip hud__tooltip--left" id="vibeTooltip" data-show="false">탭하면 감성·이성 모드로 멘트가 달라져요</div>
-            </div>
-          </div>
+          <p class="hero__stats-desc">뽁뽁 터뜨려서 스트레스 날리기</p>
           <div class="hero__stat-main">
             <span class="hero__stat-label">오늘</span>
             <span class="hero__stat-num" id="heroTodayNum">0</span>
