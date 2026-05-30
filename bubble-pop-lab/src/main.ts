@@ -937,7 +937,7 @@ const GREETINGS_F: Record<string, string> = {
   earlyMorning: "좋은 아침! 한 판 하고 가",
   morning: "잠깐 쉬어가, 한 판 어때?",
   lunch: "점심 먹었어? 밥 잘 챙겨먹어!",
-  afternoon: "거의 다 왔어, 여기 두고 가",
+  afternoon: "곧 퇴근이겠네, 힘내보자!",
   evening: "고생했어, 스트레스 털고 가자",
   night: "수고했어, 다 터뜨리고 자",
 };
