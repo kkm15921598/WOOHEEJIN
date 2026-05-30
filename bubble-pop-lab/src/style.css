@@ -474,7 +474,10 @@ body {
 
 /* ===== B안: 벤토 그리드형 (개선) ===== */
 .design-b .hero {
-  justify-content: center; padding: 24px; padding-top: 60px;
+  /* 중앙정렬 유지하되 상단은 HUD+노치(safe-area)+빼꼼 캐릭터 높이만큼 항상 확보
+     → 어느 폰(짧은 화면·노치 포함)에서도 캐릭터·말풍선이 상단 HUD와 안 겹침 */
+  justify-content: center; padding: 24px;
+  padding-top: calc(env(safe-area-inset-top, 0px) + 144px);
   background: radial-gradient(ellipse at center top, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.2) 40%, rgba(255,255,255,0) 65%);
 }
 /* 오늘 카운터 홈에서 숨김 */
