@@ -785,4 +785,6 @@ body {
   width: clamp(70px, 23vw, 90px);
   height: clamp(70px, 23vw, 90px);
   right: clamp(4px, 2vw, 10px);
+  /* 폭발/반짝이 여백으로 왼쪽에 치우쳐 보여서 오른쪽으로 살짝 보정 */
+  transform: translateX(clamp(5px, 1.6vw, 8px));
 }
