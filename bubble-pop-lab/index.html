@@ -16,6 +16,8 @@
     <link rel="stylesheet" href="https://hangeul.pstatic.net/hangeul_static/css/nanum-square-round.css" />
     <link rel="stylesheet" href="/src/style.css" />
     <title>오늘뽁 · Todapop</title>
+    <!-- 최초 실행 판별: 온보딩 미완료면 ob-show (렌더 전 실행해 홈 깜빡임 방지) -->
+    <script>try{if(!localStorage.getItem('ob_done'))document.documentElement.classList.add('ob-show');}catch(e){}</script>
   </head>
   <body data-theme="bubble" class="design-b">
     <main id="app">
@@ -179,7 +181,74 @@
           <p>개인정보처리방침에 대한 문의: <strong>wooheezin@gmail.com</strong></p>
         </div>
       </section>
+      <!-- 온보딩 (최초 실행 시에만 노출) -->
+      <section class="onboarding" id="onboarding" aria-label="온보딩">
+        <button class="onboarding__skip" id="obSkip">건너뛰기</button>
+        <div class="onboarding__viewport">
+          <div class="onboarding__track" id="obTrack">
+            <section class="ob-slide">
+              <div class="ob-slide__art"><img src="/bbok_2.png" alt="" aria-hidden="true" /></div>
+              <h2 class="ob-slide__title">오늘의 스트레스,
+뽁뽁 터뜨려서 날려버리세요</h2>
+              <p class="ob-slide__desc">손끝으로 톡톡,
+마음속 답답함도 함께 터뜨려보세요.</p>
+            </section>
+            <section class="ob-slide">
+              <div class="ob-slide__art"><img src="/bbok_3.png" alt="" aria-hidden="true" /></div>
+              <h2 class="ob-slide__title">상황에 맞게
+3가지 모드를 즐겨보세요</h2>
+              <p class="ob-slide__desc">차분하게 명상하거나,
+집중해서 몰입하거나,
+스트레스를 시원하게 터뜨려보세요.</p>
+            </section>
+            <section class="ob-slide">
+              <div class="ob-slide__art"><img src="/bbok_5.png" alt="" aria-hidden="true" /></div>
+              <h2 class="ob-slide__title">오늘의 스트레스,
+다 터뜨렸나요?</h2>
+              <p class="ob-slide__desc">오늘 기록,
+이번 달 기록,
+레벨업까지 한눈에 확인할 수 있어요.</p>
+            </section>
+          </div>
+        </div>
+        <div class="onboarding__bottom">
+          <div class="onboarding__dots" id="obDots"><span class="ob-dot on"></span><span class="ob-dot"></span><span class="ob-dot"></span></div>
+          <button class="onboarding__btn" id="obCta">다음</button>
+        </div>
+      </section>
     </main>
     <script type="module" src="/src/main.ts"></script>
+    <script>
+    (function(){
+      if(!document.documentElement.classList.contains('ob-show')) return;
+      var track=document.getElementById('obTrack'),
+          dots=[].slice.call(document.getElementById('obDots').children),
+          cta=document.getElementById('obCta'),
+          skip=document.getElementById('obSkip'),
+          N=3, i=0;
+      function render(){
+        track.style.transform='translateX('+(-i*100)+'%)';
+        dots.forEach(function(d,k){ d.classList.toggle('on', k===i); });
+        var last=(i===N-1);
+        cta.textContent=last?'시작하기':'다음';
+        skip.style.visibility=last?'hidden':'visible';
+      }
+      function go(n){ i=Math.max(0,Math.min(N-1,n)); render(); }
+      function finish(){
+        try{ localStorage.setItem('ob_done','1'); }catch(e){}
+        document.documentElement.classList.remove('ob-show');
+      }
+      cta.addEventListener('click', function(){ i<N-1 ? go(i+1) : finish(); });
+      skip.addEventListener('click', finish);
+      var sx=0, drag=false;
+      track.addEventListener('pointerdown', function(e){ drag=true; sx=e.clientX; track.style.transition='none'; });
+      track.addEventListener('pointermove', function(e){ if(!drag) return; var dx=e.clientX-sx; track.style.transform='translateX('+(-i*100 + dx/track.clientWidth*100)+'%)'; });
+      function end(e){ if(!drag) return; drag=false; track.style.transition=''; var dx=(e.clientX||sx)-sx; Math.abs(dx)>40 ? go(i+(dx<0?1:-1)) : render(); }
+      track.addEventListener('pointerup', end);
+      track.addEventListener('pointercancel', end);
+      track.addEventListener('pointerleave', function(e){ if(drag) end(e); });
+      render();
+    })();
+    </script>
   </body>
 </html>

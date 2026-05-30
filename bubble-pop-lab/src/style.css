@@ -867,3 +867,58 @@ body {
   /* 폭발/반짝이 여백으로 왼쪽에 치우쳐 보여서 오른쪽으로 살짝 보정 */
   transform: translateX(clamp(5px, 1.6vw, 8px));
 }
+
+/* ============================================================
+   온보딩 (최초 실행 시에만) — 파스텔 보라+핑크, 둥근카드, 여백
+   html.ob-show 일 때만 표시. 시작/건너뛰기 시 ob_done 저장 후 숨김.
+   ============================================================ */
+.onboarding { display: none; }
+html.ob-show .onboarding {
+  display: flex; flex-direction: column;
+  position: fixed; inset: 0; z-index: 100;
+  background:
+    radial-gradient(120% 80% at 50% 0%, #F4ECFF 0%, rgba(244,236,255,0) 55%),
+    linear-gradient(165deg, #F6EEFF 0%, #FFF1F7 100%);
+  padding: calc(env(safe-area-inset-top, 0px) + 20px) 0 calc(env(safe-area-inset-bottom, 0px) + 24px);
+}
+.onboarding__skip {
+  align-self: flex-end; margin-right: 22px; border: none; background: transparent;
+  font-family: inherit; font-size: 13.5px; font-weight: 700; color: #8E88A3; cursor: pointer; padding: 8px 6px;
+}
+.onboarding__viewport { flex: 1; overflow: hidden; }
+.onboarding__track {
+  display: flex; height: 100%; touch-action: pan-y;
+  transition: transform .45s cubic-bezier(.22,.61,.36,1);   /* 부드러운 페이지 전환 */
+}
+.ob-slide {
+  min-width: 100%; height: 100%; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center; padding: 8px 34px 0;
+}
+.ob-slide__art {
+  width: min(58%, 210px); aspect-ratio: 1; display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; margin-bottom: 26px; position: relative;
+  background: radial-gradient(circle at 50% 45%, rgba(255,255,255,.9) 0%, rgba(199,167,255,.28) 55%, rgba(255,194,221,.12) 100%);
+}
+.ob-slide__art img { width: 84%; height: 84%; object-fit: contain; filter: drop-shadow(0 10px 18px rgba(124,107,240,.22)); }
+.ob-slide__title {
+  font-size: clamp(21px, 6vw, 25px); font-weight: 900; line-height: 1.4; letter-spacing: -.4px;
+  margin: 0; white-space: pre-line;
+  background: linear-gradient(120deg, #7C6BF0, #FF9DC6);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.ob-slide__desc {
+  font-size: clamp(13.5px, 3.8vw, 15px); font-weight: 600; line-height: 1.7; color: #8E88A3;
+  margin: 10px 0 0; white-space: pre-line;
+  min-height: calc(1.7em * 3);   /* 설명 3줄 높이 고정 → 슬라이드마다 이미지·글 위치 동일 */
+}
+.onboarding__bottom { display: flex; flex-direction: column; align-items: center; gap: 22px; padding: 0 30px; }
+.onboarding__dots { display: flex; gap: 8px; }
+.ob-dot { width: 8px; height: 8px; border-radius: 50%; background: rgba(124,107,240,.22); transition: .3s cubic-bezier(.22,.61,.36,1); }
+.ob-dot.on { width: 24px; background: linear-gradient(90deg, #A78BFA, #FF9DC6); }
+.onboarding__btn {
+  width: 100%; max-width: 330px; border: none; cursor: pointer; font-family: inherit; color: #fff; font-weight: 800;
+  border-radius: 18px; padding: 16px; font-size: 16px; letter-spacing: -.2px;
+  background: linear-gradient(120deg, #A78BFA, #FF9DC6);
+  box-shadow: 0 12px 26px -8px rgba(150,100,230,.55); transition: transform .12s;
+}
+.onboarding__btn:active { transform: scale(.97); }
